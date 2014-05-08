@@ -1,7 +1,7 @@
 gpupy
 =====
 
-Wrapper for cuBlas\NumbaPro functions that provides drop in support for NumPy functions on GPU
+Wrapper for GPU cuBlas\NumbaPro functions that provides drop in support for NumPy functions
 
 ### Use
 Instantiate a Gpupy object 
@@ -11,22 +11,4 @@ gp = Gpupy()
 ```
 Functions:
 
-gp.dot - np.dot drop-in
-
-
-
-### Tasks
-  - To Do
-x - Done
-
-[ ] np.dot
-	[x] matrix matrix
-	[x] matrix vector
-	[ ] vector matrix
-	[ ] flags for transpose
-	[ ] flags for (symmetric, traingular...)
-	
-[ ] matrix addition
-[ ] matrix scalar
-[ ] pointwise multiply
-[ ] ...  
+gp.dot - np.dot drop-in (matrix-matrix and matrix-vector products)
