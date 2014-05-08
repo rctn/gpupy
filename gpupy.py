@@ -1,3 +1,9 @@
+"""
+gpupy.py
+NumPy GPU wrapper
+Jesse Livezey and Zayd Enam
+May 7th 2014
+"""
 import numbapro.cudalib.cublas
 from numba import cuda
 import numpy as np
