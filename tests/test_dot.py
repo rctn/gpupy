@@ -1,7 +1,7 @@
 from gpupy import Gpupy
 import numpy as np
 
-class test_gpupy():
+class test_dot():
 
 	def setup(self):
 		self.gp = Gpupy()
