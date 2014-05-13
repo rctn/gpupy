@@ -78,7 +78,20 @@ class Gpupy(object):
 			else:
 				raise ValueError('matrices are not aligned')
 
-			self.blas.gemv('N', a_dim[0], a_dim[1], 1, a, b, 0, out)
+			self.blas.gemv('N', a_dim[0], a_dim[1], 1., a, b, 0., out)
+
+		elif a.ndim == 1 and b.ndim == 2:
+			if a_dim[0] != b_dim[0]:
+				raise ValueError('matrices are not aligned')
+			
+			if out is None:
+				out = cuda.device_array((b_dim[1]), dtype=out_dtype, order='F')
+			elif out.shape[0] == b_dim[1]:
+				pass
+			else:
+				raise ValueError('matrices are not aligned')
+
+			self.blas.gemv('T', b_dim[0], b_dim[1], 1., b, a, 0., out)
 
 		return out
 

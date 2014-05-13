@@ -24,3 +24,12 @@ class test_dot():
 		out_gp = self.gp.dot(a, b).copy_to_host()
 
 		assert(np.allclose(out_np, out_gp))
+
+	def test_gevm(self):		
+		a = self.rng.rand(128, 1024).astype(np.float32)
+		b = self.rng.rand(128).astype(np.float32)
+
+		out_np = np.dot(b,a)
+		out_gp = self.gp.dot(b,a).copy_to_host()
+
+		assert(np.allclose(out_np, out_gp))
