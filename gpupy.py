@@ -41,7 +41,7 @@ class Gpupy(object):
 
 		if out == cuda.cudadrv.devicearray.DeviceNDArray:
 			pass
-		elif out == None:
+		elif out is None:
 			pass
 		else:
 			raise NotImplementedError
@@ -58,7 +58,7 @@ class Gpupy(object):
 			if a_dim[1] != b_dim[0]:
 				raise ValueError('matrices are not aligned')
 
-			if out == None:
+			if out is None:
 				out = cuda.device_array((a_dim[0], b_dim[1]), dtype=out_dtype, order='F')
 			elif out.shape[0] == a_dim[0] and out.shape[1] == b_dim[1]:
 				pass
@@ -71,7 +71,7 @@ class Gpupy(object):
 			if a_dim[1] != b_dim[0]:
 				raise ValueError('matrices are not aligned')
 			
-			if out == None:
+			if out is None:
 				out = cuda.device_array((a_dim[0]), dtype=out_dtype, order='F')
 			elif out.shape[0] == a_dim[0]:
 				pass
@@ -81,3 +81,40 @@ class Gpupy(object):
 			self.blas.gemv('N', a_dim[0], a_dim[1], 1, a, b, 0, out)
 
 		return out
+
+
+	def T(self, a, out=None):
+		if type(a) == np.ndarray:
+			a = np.array(a, order='F')
+
+		elif type(a) == cuda.cudadrv.devicearray.DeviceNDArray:
+			pass
+		else:
+			raise NotImplementedError
+
+		if a.dtype == np.float32:
+			out_dtype = a.dtype
+		else:
+			raise NotImplementedError
+
+		if out == cuda.cudadrv.devicearray.DeviceNDArray:
+			pass
+		elif out == None:
+			pass
+		else:
+			raise NotImplementedError
+
+		a_dim = a.shape
+                if len(a_dim) == 2:
+                    if out is None:
+                        out = cuda.device_array((a_dim[1],a_dim[0]),dtype=out_dtype,order='F')
+                    elif out.shape[0] == a_dim[1] and out.shape[1] == a_dim[0]:
+                        pass
+                    else:
+                        raise NotImplementedError
+                else:
+                    raise NotImplementedError
+
+                self.blas.geam('T','T',a_dim[1],a_dim[0],1.,a,0.,a,out)
+
+                return out
