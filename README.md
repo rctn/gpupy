@@ -24,7 +24,7 @@ out = gp.function(*args)
 - gp.add: np.add drop-in (matrix-matrix and vector-vector addition)
 - gp.mult: np.multiply drop-in (matrix-matrix and vector-vector multiplication)
 
-### Speedup on Tesla K40 vs. Xeon E-5 1620
+### Speedup on Tesla K40 vs. Xeon E-5 1620 (with MKL)
 
 ```
 Parameters:
