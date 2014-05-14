@@ -39,6 +39,6 @@ Time for 10 dots:
 -----------NumbaPro GPU based dot------------
 Time to create arrays:
 3.788626 s
-Average time over 10 dots:
+Time for 10 dots:
 3.224349 s
 ```
