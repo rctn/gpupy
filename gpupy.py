@@ -34,6 +34,14 @@ def vadd_pointwise(a,b,out):
     if i < n:
         out[i] = a[i]+b[i]
 
+@cuda.jit('void(f4[:],f4[:],f4[:])')
+def vsub_pointwise(a,b,out):
+    n = a.shape[0]
+    i = cuda.grid(1)
+
+    if i < n:
+        out[i] = a[i]-b[i]
+
 @cuda.jit('void(f4[:],f4[:],f4,f4,f4[:])')
 def vsadd_pointwise(a,b,alpha,beta,out):
     n = a.shape[0]
@@ -317,3 +325,78 @@ class Gpupy(object):
             raise NotImplementedError
 
         return out
+
+    def sub(self, a, b, out = None, alpha = 1., beta = 1.):
+
+        if type(a) == np.ndarray:
+            a = np.array(a, order='F')
+
+        elif type(a) == cuda.cudadrv.devicearray.DeviceNDArray:
+            pass
+        else:
+            raise NotImplementedError
+
+        if a.dtype == np.float32:
+            out_dtype = a.dtype
+        else:
+            raise NotImplementedError
+
+        if type(b) == np.ndarray:
+            b = np.array(b, order='F')
+        elif type(b) == cuda.cudadrv.devicearray.DeviceNDArray:
+            pass
+        else:
+            raise NotImplementedError
+
+        if b.dtype == np.float32:
+            pass
+        else:
+            raise NotImplementedError
+
+        if out == cuda.cudadrv.devicearray.DeviceNDArray:
+            pass
+        elif out is None:
+            pass
+        else:
+            raise NotImplementedError
+
+        if b.dtype == np.float32:
+            pass
+        else:
+            raise NotImplementedError
+
+        a_dim = a.shape
+        b_dim = b.shape
+
+        if a.ndim == 2 and b.ndim == 2:
+            if a_dim[0] != b_dim[0] and a_dim[1] != b_dim[1]:
+                raise ValueError('matrices are not aligned')
+
+            if out is None:
+                out = cuda.device_array((a_dim[0], b_dim[1]), dtype=out_dtype, order='F')
+            elif out.shape[0] == a_dim[0] and out.shape[1] == b_dim[1]:
+                pass
+            else:
+                raise ValueError('matrices are not aligned')
+
+            self.blas.geam('N', 'N', a_dim[0], a_dim[1], alpha, a, -beta, b, out)
+        elif a.ndim == 1 and b.ndim == 1:
+            if a_dim[0] != b_dim[0]:
+                raise ValueError('matricies not aligned')
+            if out is None:
+                out = cuda.device_array(a_dim[0], dtype=out_dtype, order='F')
+            elif out.shape[0] == a_dim[0]:
+                pass
+            else:
+                raise ValueError('matrices are not aligned')
+            blockdim = 32
+            griddim = int(ceil(a_dim[0]/blockdim))
+            if alpha != 1. or beta != 1.:
+                vsadd_pointwise[griddim,blockdim](a,b,alpha,-beta,out)
+            else:
+                vsub_pointwise[griddim,blockdim](a,b,out)
+        else:
+            raise NotImplementedError
+
+        return out
+
