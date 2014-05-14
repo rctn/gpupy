@@ -7,6 +7,7 @@ May 7th 2014
 import numbapro.cudalib.cublas
 from numbapro import cuda
 import numpy as np
+from math import ceil
 
 @cuda.jit('void(f4[:,:],f4[:,:],f4[:,:])')
 def mmultiply_pointwise(a,b,out):
@@ -24,6 +25,22 @@ def vmultiply_pointwise(a,b,out):
 
     if i < n:
         out[i] = a[i]*b[i]
+
+@cuda.jit('void(f4[:],f4[:],f4[:])')
+def vadd_pointwise(a,b,out):
+    n = a.shape[0]
+    i = cuda.grid(1)
+
+    if i < n:
+        out[i] = a[i]+b[i]
+
+@cuda.jit('void(f4[:],f4[:],f4,f4,f4[:])')
+def vsadd_pointwise(a,b,alpha,beta,out):
+    n = a.shape[0]
+    i = cuda.grid(1)
+
+    if i < n:
+        out[i] = alpha*a[i]+beta*b[i]
 
 class Gpupy(object):
     def __init__(self):
@@ -209,11 +226,20 @@ class Gpupy(object):
 
             self.blas.geam('N', 'N', a_dim[0], a_dim[1], alpha, a, beta, b, out)
         elif a.ndim == 1 and b.ndim == 1:
-            #Maybe best to write a kernel for this? axpy overwrites y
-            raise NotImplementedError
             if a_dim[0] != b_dim[0]:
                 raise ValueError('matricies not aligned')
-            out = self.blas.dot(a,b)
+            if out is None:
+                out = cuda.device_array(a_dim[0], dtype=out_dtype, order='F')
+            elif out.shape[0] == a_dim[0]:
+                pass
+            else:
+                raise ValueError('matrices are not aligned')
+            blockdim = 32
+            griddim = int(ceil(a_dim[0]/blockdim))
+            if alpha != 1. or beta != 1.:
+                vsadd_pointwise[griddim,blockdim](a,b,alpha,beta,out)
+            else:
+                vadd_pointwise[griddim,blockdim](a,b,out)
         else:
             raise NotImplementedError
 
@@ -272,7 +298,7 @@ class Gpupy(object):
                 raise ValueError('matrices are not aligned')
 
             blockdim2 = (32,32)
-            griddim2 = (int(a_dim[0]/blockdim2[0]),int(a_dim[1]/blockdim2[1]))
+            griddim2 = (int(ceil(a_dim[0]/blockdim2[0])),int(ceil(a_dim[1]/blockdim2[1])))
             mmultiply_pointwise[griddim2,blockdim2](a,b,out)
 
         elif a.ndim == 1 and b.ndim == 1:
@@ -285,7 +311,7 @@ class Gpupy(object):
             else:
                 raise ValueError('matrices are not aligned')
             blockdim = 32
-            griddim = int(a_dim[0]/blockdim)
+            griddim = int(ceil(a_dim[0]/blockdim))
             vmultiply_pointwise[griddim,blockdim](a,b,out)
         else:
             raise NotImplementedError
