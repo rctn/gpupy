@@ -50,6 +50,19 @@ def vsadd_pointwise(a,b,alpha,beta,out):
     if i < n:
         out[i] = alpha*a[i]+beta*b[i]
 
+def cu_reshape(d_a, a_shape, a_strides, a_dtype):
+    """Reshapes d_a to have same dimensions as a"""
+
+    if np.prod(d_a.shape) != np.prod(a_shape):
+        raise ValueError('total size of new array must be unchanged')
+    if d_a.ndim > 2 and len(a_shape) > 2:
+        raise NotImplementedError
+
+    out = cuda.devicearray.DeviceNDArray(
+            shape=a_shape, strides=a_strides,
+            dtype=a_dtype,gpu_data=d_a.gpu_data)
+    return out
+
 class Gpupy(object):
     def __init__(self):
         self.blas = numbapro.cudalib.cublas.Blas()
@@ -399,4 +412,39 @@ class Gpupy(object):
             raise NotImplementedError
 
         return out
+
+    def scal(self, a, alpha):
+        """Scale and return a."""
+
+        if type(a) == np.ndarray:
+            a = np.array(a, order='F')
+        elif type(a) == cuda.cudadrv.devicearray.DeviceNDArray:
+            pass
+        else:
+            raise NotImplementedError
+
+        if a.dtype == np.float32:
+            pass
+        else:
+            raise NotImplementedError
+
+        a_dim = a.shape
+        a_strides = a.strides
+        a_dtype = a.dtype
+
+        if a.ndim == 2:
+            if type(a) == np.ndarray:
+                a = cuda.to_device(a.T.ravel())
+
+            self.blas.scal(alpha, a)
+            a = cu_reshape(a, a_dim, a_strides, a_dtype)
+        elif a.ndim == 1:
+            if type(a) == np.ndarray:
+                a = cuda.to_device(a)
+            self.blas.scal(alpha, a)
+        else:
+            raise NotImplementedError
+
+        return a
+
 
