@@ -53,7 +53,7 @@ class test_add():
 
 	def test_ms_scale(self):
 		a = self.rng.rand(128,1024).astype(np.float32)
-		b = self.rng.rand(1).astype(np.float32)
+		b = 1.
                 alpha = .4
                 beta = -1.6
 
@@ -66,7 +66,7 @@ class test_add():
 
 	def test_ms(self):
 		a = self.rng.rand(128,1024).astype(np.float32)
-		b = self.rng.rand(1).astype(np.float32)
+		b = 1.
 
 		out_np = (a+b).astype(np.float32)
 		out_gp = self.gp.add(a,b).copy_to_host()
@@ -77,7 +77,7 @@ class test_add():
 
 	def test_vs_scale(self):
 		a = self.rng.rand(1024).astype(np.float32)
-		b = self.rng.rand(1).astype(np.float32)
+		b = 1.
                 alpha = .4
                 beta = -1.6
 
@@ -90,7 +90,7 @@ class test_add():
 
 	def test_vs(self):
 		a = self.rng.rand(1024).astype(np.float32)
-		b = self.rng.rand(1).astype(np.float32)
+		b = 1.
 
 		out_np = (a+b).astype(np.float32)
 		out_gp = self.gp.add(a,b).copy_to_host()

@@ -166,6 +166,8 @@ def check_array(a):
         if a.dtype not in ok_types:
             raise ValueError('input of type '+str(a.dtype)+
                              ' is not supported')
+        else:
+            a = np.array(a,dtype=np.float32, order='F')
     if a.dtype == np.float32:
         out_dtype = a.dtype
     else:
