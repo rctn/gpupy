@@ -340,9 +340,9 @@ class Gpupy(object):
             blockdim = (32,32)
             griddim = (int(ceil(a_dim[0]/blockdim[0])),int(ceil(a_dim[1]/blockdim[0])))
             if alpha != 1. or beta != 1.:
-                raise NotImplementedError
+                ms_sadd_pointwise[griddim,blockdim](a,b,alpha,beta,out)
             else:
-                raise NotImplementedError
+                ms_add_pointwise[griddim,blockdim](a,b,out)
         elif a.ndim == 0 and b.ndim == 2:
             if out is None:
                 out = cuda.device_array(b_dim, dtype=out_dtype, order='F')
@@ -353,9 +353,9 @@ class Gpupy(object):
             blockdim = (32,32)
             griddim = (int(ceil(b_dim[0]/blockdim[0])),int(ceil(b_dim[1]/blockdim[0])))
             if alpha != 1. or beta != 1.:
-                raise NotImplementedError
+                ms_sadd_pointwise[griddim,blockdim](b,a,beta,alpha,out)
             else:
-                raise NotImplementedError
+                ms_add_pointwise[griddim,blockdim](b,a,out)
         elif a.ndim == 1 and b.ndim == 0:
             if out is None:
                 out = cuda.device_array(a_dim, dtype=out_dtype, order='F')
@@ -366,9 +366,9 @@ class Gpupy(object):
             blockdim = 32
             griddim = int(ceil(a_dim[0]/blockdim))
             if alpha != 1. or beta != 1.:
-                raise NotImplementedError
+                vs_sadd_pointwise[griddim,blockdim](a,b,alpha,beta,out)
             else:
-                raise NotImplementedError
+                vs_add_pointwise[griddim,blockdim](a,b,out)
         elif a.ndim == 0 and b.ndim == 1:
             if out is None:
                 out = cuda.device_array(b_dim, dtype=out_dtype, order='F')
@@ -379,9 +379,9 @@ class Gpupy(object):
             blockdim = 32
             griddim = int(ceil(b_dim[0]/blockdim))
             if alpha != 1. or beta != 1.:
-                raise NotImplementedError
+                vs_sadd_pointwise[griddim,blockdim](b,a,beta,alpha,out)
             else:
-                raise NotImplementedError
+                vs_add_pointwise[griddim,blockdim](b,a,out)
         elif a.ndim == 2 and b.ndim == 1:
             if out is None:
                 out = cuda.device_array(a_dim, dtype=out_dtype, order='F')
