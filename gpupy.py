@@ -157,18 +157,15 @@ def cu_reshape(d_a, a_shape, a_strides, a_dtype):
 
 def check_array(a):
     ok_types = [np.int, np.float32, np.float64]
-    if type(a) == list:
-        a = np.array(a)
-        if a.dtype not in ok_types:
-            raise ValueError('array of type '+str(type(a))+
-                             ' is not supported')
     if type(a) == np.ndarray:
         a = np.array(a, order='F')
     elif type(a) == cuda.cudadrv.devicearray.DeviceNDArray:
         pass
     else:
-        raise NotImplementedError
-
+        a = np.array(a)
+        if a.dtype not in ok_types:
+            raise ValueError('input of type '+str(a.dtype)+
+                             ' is not supported')
     if a.dtype == np.float32:
         out_dtype = a.dtype
     else:
