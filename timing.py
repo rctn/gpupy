@@ -15,11 +15,11 @@ tmed = 6
 nlong = 1
   
 #Setup variables for testing
-dimMatrix = (8192,8192)
+dimMatrix = (4096,4096)
 d_type = np.float32
 nIter = 10
     
-params = """Parameters:
+params = """Parameters for dot:
          Matrix Size: """+str(dimMatrix)+"""
          nIter: """+str(nIter)+"""\n"""
 print params
@@ -54,3 +54,40 @@ print 'Time for '+str(nIter)+' dots:'
 print '%f s' % dt
     
 
+nIter = 1000
+params = """Parameters for add:
+         Matrix Size: """+str(dimMatrix)+"""
+         nIter: """+str(nIter)+"""\n"""
+print ''
+print '--------------------------------------------'
+print ''
+print params
+             
+start = timer()
+matrix1 = np.array(np.random.rand(*dimMatrix),dtype=d_type)
+matrix2 = np.array(np.random.rand(*dimMatrix),dtype=d_type)
+dt = timer()-start
+print '---------------Numpy based add---------------'
+print 'Time to create arrays:'
+print '%f s' % dt
+start = timer()
+for ii in xrange(nIter):
+    np.add(matrix1,matrix2)
+dt = timer()-start
+print 'Time for '+str(nIter)+' dots:'
+print '%f s' % dt
+
+gp = Gpupy()
+start = timer()
+matrix1 = cuda.to_device(np.array(np.random.rand(*dimMatrix),dtype=d_type,order='F'))
+matrix2 = cuda.to_device(np.array(np.random.rand(*dimMatrix),dtype=d_type,order='F'))
+dt = timer()-start
+print '-----------NumbaPro GPU based add------------'
+print 'Time to create arrays:'
+print '%f s' % dt
+start = timer()
+for ii in xrange(nIter):
+    gp.add(matrix1,matrix2)
+dt = timer()-start
+print 'Time for '+str(nIter)+' dots:'
+print '%f s' % dt
