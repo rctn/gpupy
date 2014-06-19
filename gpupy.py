@@ -156,6 +156,12 @@ def cu_reshape(d_a, a_shape, a_strides, a_dtype):
     return out
 
 def check_array(a):
+    ok_types = [np.int, np.float32, np.float64]
+    if type(a) == list:
+        a = np.array(a)
+        if a.dtype not in ok_types:
+            raise ValueError('array of type '+str(type(a))+
+                             ' is not supported')
     if type(a) == np.ndarray:
         a = np.array(a, order='F')
     elif type(a) == cuda.cudadrv.devicearray.DeviceNDArray:
@@ -274,6 +280,9 @@ class Gpupy(object):
         self.blas.geam('T','T',a_dim[1],a_dim[0],1.,a,0.,a,out)
 
         return out
+
+    def transpose(self, a, out=None):
+        return self.T(a, out)
 
     def add(self, a, b, out = None, alpha = 1., beta = 1.):
         b, outd_type = check_array(b)
