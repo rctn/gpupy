@@ -74,7 +74,7 @@ start = timer()
 for ii in xrange(nIter):
     np.add(matrix1,matrix2)
 dt = timer()-start
-print 'Time for '+str(nIter)+' dots:'
+print 'Time for '+str(nIter)+' adds:'
 print '%f s' % dt
 
 gp = Gpupy()
@@ -89,5 +89,5 @@ start = timer()
 for ii in xrange(nIter):
     gp.add(matrix1,matrix2)
 dt = timer()-start
-print 'Time for '+str(nIter)+' dots:'
+print 'Time for '+str(nIter)+' adds:'
 print '%f s' % dt

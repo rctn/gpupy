@@ -54,11 +54,11 @@ Parameters for add:
 ---------------Numpy based add---------------
 Time to create arrays:
 0.484548 s
-Time for 100 dots:
+Time for 100 adds:
 2.456518 s
 -----------NumbaPro GPU based add------------
 Time to create arrays:
 0.837742 s
-Time for 100 dots:
+Time for 100 adds:
 0.163046 s
 ```
