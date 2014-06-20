@@ -54,12 +54,12 @@ print 'Time for '+str(nIter)+' dots:'
 print '%f s' % dt
     
 
-nIter = 1000
+nIter = 100
 params = """Parameters for add:
          Matrix Size: """+str(dimMatrix)+"""
          nIter: """+str(nIter)+"""\n"""
 print ''
-print '--------------------------------------------'
+print '---------------------------------------------'
 print ''
 print params
              
