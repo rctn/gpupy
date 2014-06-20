@@ -1,194 +1,63 @@
-"""
-gpupy.py
-NumPy GPU wrapper
+""" Numpy-like GPU wrapper. Contains the main gpupy class 
+and supporting numbapro cuda kernels.
+
 Jesse Livezey and Zayd Enam
 May 7th 2014
 """
+__authors__   = "Jesse Livezey, Zayd Enam"
+__copyright__ = "(c) 2014, Jesse Livezey, Zayd Enam"
+__license__   = "The MIT License (MIT)"
+__contact__   = "Jesse Livezey <jesse.livezey+gpupy@berkeley.edu>"
 import numbapro.cudalib.cublas
 from numbapro import cuda
 import numpy as np
 from math import ceil
 
-@cuda.jit('void(f4[:,:],f4[:,:],f4[:,:])')
-def mmultiply_pointwise(a,b,out):
-    n = a.shape[0]
-    m = a.shape[1]
-    i,j = cuda.grid(2)
-
-    if i < n and j < m:
-        out[i,j] = a[i,j]*b[i,j]
-
-@cuda.jit('void(f4[:],f4[:],f4[:])')
-def vmultiply_pointwise(a,b,out):
-    n = a.shape[0]
-    i = cuda.grid(1)
-
-    if i < n:
-        out[i] = a[i]*b[i]
-
-@cuda.jit('void(f4[:],f4[:],f4[:])')
-def vadd_pointwise(a,b,out):
-    n = a.shape[0]
-    i = cuda.grid(1)
-
-    if i < n:
-        out[i] = a[i]+b[i]
-
-@cuda.jit('void(f4[:],f4[:],f4,f4,f4[:])')
-def vsadd_pointwise(a,b,alpha,beta,out):
-    n = a.shape[0]
-    i = cuda.grid(1)
-
-    if i < n:
-        out[i] = alpha*a[i]+beta*b[i]
-
-@cuda.jit('void(f4[:,:],f4,f4,f4,f4[:,:])')
-def ms_sadd_pointwise(a,b,alpha,beta,out):
-    n = a.shape[0]
-    m = a.shape[1]
-    i,j = cuda.grid(2)
-
-    if i < n and j < m:
-        out[i,j] = alpha*a[i,j]+beta*b
-@cuda.jit('void(f4[:,:],f4,f4[:,:])')
-def ms_add_pointwise(a,b,out):
-    n = a.shape[0]
-    m = a.shape[1]
-    i,j = cuda.grid(2)
-
-    if i < n and j < m:
-        out[i,j] = a[i,j]+b
-
-@cuda.jit('void(f4[:],f4,f4,f4,f4[:])')
-def vs_sadd_pointwise(a,b,alpha,beta,out):
-    n = a.shape[0]
-    i = cuda.grid(1)
-
-    if i < n:
-        out[i] = alpha*a[i]+beta*b
-@cuda.jit('void(f4[:],f4,f4[:])')
-def vs_add_pointwise(a,b,out):
-    n = a.shape[0]
-    i = cuda.grid(1)
-
-    if i < n:
-        out[i] = a[i]+b
-
-@cuda.jit('void(f4[:,:],f4[:],f4,f4,f4[:,:])')
-def mv0_sadd_pointwise(a,b,alpha,beta,out):
-    n = a.shape[0]
-    m = a.shape[1]
-    i,j = cuda.grid(2)
-
-    if i < n and n < m:
-        out[i,j] = alpha*a[i,j]+beta*b[i]
-@cuda.jit('void(f4[:,:],f4[:],f4[:,:])')
-def mv0_add_pointwise(a,b,out):
-    n = a.shape[0]
-    m = a.shape[1]
-    i,j = cuda.grid(2)
-
-    if i < n and n < m:
-        out[i,j] = a[i,j]+b[i]
-
-@cuda.jit('void(f4[:,:],f4[:],f4,f4,f4[:,:])')
-def mv1_sadd_pointwise(a,b,alpha,beta,out):
-    n = a.shape[0]
-    m = a.shape[1]
-    i,j = cuda.grid(2)
-
-    if i < n and j < m:
-        out[i,j] = alpha*a[i,j]+beta*b[j]
-@cuda.jit('void(f4[:,:],f4[:],f4[:,:])')
-def mv1_add_pointwise(a,b,out):
-    n = a.shape[0]
-    m = a.shape[1]
-    i,j = cuda.grid(2)
-
-    if i < n and j < m:
-        out[i,j] = a[i,j]+b[j]
-
-@cuda.jit('void(f4[:,:],f4[:,:],f4,f4,f4[:,:])')
-def mv0f_sadd_pointwise(a,b,alpha,beta,out):
-    n = a.shape[0]
-    m = a.shape[1]
-    i,j = cuda.grid(2)
-
-    if i < n and n < m:
-        out[i,j] = alpha*a[i,j]+beta*b[i,0]
-@cuda.jit('void(f4[:,:],f4[:,:],f4[:,:])')
-def mv0f_add_pointwise(a,b,out):
-    n = a.shape[0]
-    m = a.shape[1]
-    i,j = cuda.grid(2)
-
-    if i < n and n < m:
-        out[i,j] = a[i,j]+b[i,0]
-
-@cuda.jit('void(f4[:,:],f4[:,:],f4,f4,f4[:,:])')
-def mv1f_sadd_pointwise(a,b,alpha,beta,out):
-    n = a.shape[0]
-    m = a.shape[1]
-    i,j = cuda.grid(2)
-
-    if i < n and j < m:
-        out[i,j] = alpha*a[i,j]+beta*b[0,j]
-@cuda.jit('void(f4[:,:],f4[:,:],f4[:,:])')
-def mv1f_add_pointwise(a,b,out):
-    n = a.shape[0]
-    m = a.shape[1]
-    i,j = cuda.grid(2)
-
-    if i < n and j < m:
-        out[i,j] = a[i,j]+b[0,j]
-
-def cu_reshape(d_a, a_shape, a_strides, a_dtype):
-    """Reshapes d_a to have same dimensions as a"""
-
-    if np.prod(d_a.shape) != np.prod(a_shape):
-        raise ValueError('total size of new array must be unchanged')
-    if d_a.ndim > 2 and len(a_shape) > 2:
-        raise NotImplementedError
-
-    out = cuda.devicearray.DeviceNDArray(
-            shape=a_shape, strides=a_strides,
-            dtype=a_dtype,gpu_data=d_a.gpu_data)
-    return out
-
-def check_array(a):
-    ok_types = [np.int, np.float32, np.float64]
-    if type(a) == np.ndarray:
-        a = np.array(a, order='F')
-    elif type(a) == cuda.cudadrv.devicearray.DeviceNDArray:
-        pass
-    else:
-        a = np.array(a)
-        if a.dtype not in ok_types:
-            raise ValueError('input of type '+str(a.dtype)+
-                             ' is not supported')
-        else:
-            a = np.array(a,dtype=np.float32, order='F')
-    if a.dtype == np.float32:
-        out_dtype = a.dtype
-    else:
-        raise NotImplementedError
-    return (a, out_dtype)
-
-
 class Gpupy(object):
-    """Class that has cuBLAS wrappers and additional GPU functionality"""
+    """Class that has cuBLAS wrappers and additional GPU functionality.
+    
+    Behaves like numpy functions whenever possible.
+    
+    Parameters
+    ----------
+    gpuID : int
+        ID of GPU to use. Cannot be changed later and must be set before any
+        cuda functionality is used.
+    """
 
-    def __init__(self,gpuID = None):
-        self.blas = numbapro.cudalib.cublas.Blas()
+    def __init__(self, gpuID=None):
         if gpuID is not None:
-            raise NotImplementedError
             if gpuID < len(cuda.list_devices()) and gpuID >= 0:
                 cuda.close()
                 cuda.select_device(gpuID)
             else:
                 raise ValueError('GPU ID not found')
+        self.blas = numbapro.cudalib.cublas.Blas()
+        self.stream = cuda.stream()
+
+    def syncronize(self):
+        """Synchronize cuda stream."""
+        self.stream.synchronize()
+
+    def sync(self):
+        """Alias to synchronize."""
+        self.synchronize()
 
     def dot(self, a, b, out=None):
+        """Takes the dot product of two 2D arrays or 1D vectors.
+
+        Checks array type and shape. Should behave like numpy.dot(a, b).
+
+        Parameters
+        ----------
+        a : array-like
+            Numpy or DeviceNDArray
+        b : array-like
+            Numpy or DeviceNDArray
+        out : DeviceNDArray (optional)
+            Array will be filled with result if given.
+        """
+
         b, outd_type = check_array(b)
         a, out_dtype = check_array(a)
 
@@ -256,6 +125,16 @@ class Gpupy(object):
 
 
     def T(self, a, out=None):
+        """Returns the transpose of a 2D array.
+
+        Parameters
+        ----------
+        a : array-like
+            Numpy or DeviceNDArray to transpose.
+        out : DeviceNDArray (optional)
+            Array to overwrite with result.
+        """
+
         a, out_dtype = check_array(a)
             
         if out == cuda.cudadrv.devicearray.DeviceNDArray:
@@ -281,20 +160,34 @@ class Gpupy(object):
         return out
 
     def transpose(self, a, out=None):
+        """Alias to T."""
         return self.T(a, out)
 
     def add(self, a, b, out = None, alpha = 1., beta = 1.):
+        """Pointwise addition of two scalars, 1D, or 2D arrays.
+
+        Behaves like numpy array in terms of broadcasting.
+
+        Parameters
+        ----------
+        a : array-like
+            Array to add.
+        b : array-like
+            Array to add.
+        out : DeviceNDArray (optional)
+            Result will overwrite out if given.
+        alpha : float (optional)
+            Scales a before addition.
+        beta : float
+            Scales b before addition.
+        """
+
         b, outd_type = check_array(b)
         a, out_dtype = check_array(a)
 
         if out == cuda.cudadrv.devicearray.DeviceNDArray:
             pass
         elif out is None:
-            pass
-        else:
-            raise NotImplementedError
-
-        if b.dtype == np.float32:
             pass
         else:
             raise NotImplementedError
@@ -430,7 +323,28 @@ class Gpupy(object):
             raise NotImplementedError
         return out
 
-    def mult(self,a,b,out=None):
+    def multiply(self, a, b, out=None):
+        "Alias to mult."
+        return mult(a, b, out)
+
+    def mult(self, a, b, out=None, alpha=None):
+        """Pointwise multiplication of two 1D or 2D arrays.
+
+        Parameters
+        ----------
+        a : array-like
+            Array to multiply.
+        b : array-like
+            Array to multiply.
+        out : DeviceNDArray (optional)
+            Result will overwrite out if given.
+        alpha : float
+            Additional scale factor for multiplication.
+        """
+
+        if alpha is not None:
+            raise NotImplementedError
+
         b, outd_type = check_array(b)
         a, out_dtype = check_array(a)
 
@@ -485,20 +399,17 @@ class Gpupy(object):
         return  self.add(a, b, alpha=alpha, beta=-beta)
 
     def scal(self, a, alpha):
+        """Scale a 1D or 2D array by alpha.
+
+        Parameters
+        ----------
+        a : array-like
+            Array to scale.
+        alpha : float
+            Scaling factor.
+        """
+
         a, out_dtype = check_array(a)
-        """Scale and return a."""
-
-        if type(a) == np.ndarray:
-            a = np.array(a, order='F')
-        elif type(a) == cuda.cudadrv.devicearray.DeviceNDArray:
-            pass
-        else:
-            raise NotImplementedError
-
-        if a.dtype == np.float32:
-            pass
-        else:
-            raise NotImplementedError
 
         a_dim = a.shape
         a_strides = a.strides
@@ -519,4 +430,180 @@ class Gpupy(object):
 
         return a
 
+@cuda.jit('void(f4[:,:],f4[:,:],f4[:,:])')
+def mmultiply_pointwise(a,b,out):
+    n = a.shape[0]
+    m = a.shape[1]
+    i,j = cuda.grid(2)
+
+    if i < n and j < m:
+        out[i,j] = a[i,j]*b[i,j]
+
+@cuda.jit('void(f4[:],f4[:],f4[:])')
+def vmultiply_pointwise(a,b,out):
+    n = a.shape[0]
+    i = cuda.grid(1)
+
+    if i < n:
+        out[i] = a[i]*b[i]
+
+@cuda.jit('void(f4[:],f4[:],f4[:])')
+def vadd_pointwise(a,b,out):
+    n = a.shape[0]
+    i = cuda.grid(1)
+
+    if i < n:
+        out[i] = a[i]+b[i]
+
+@cuda.jit('void(f4[:],f4[:],f4,f4,f4[:])')
+def vsadd_pointwise(a,b,alpha,beta,out):
+    n = a.shape[0]
+    i = cuda.grid(1)
+
+    if i < n:
+        out[i] = alpha*a[i]+beta*b[i]
+
+@cuda.jit('void(f4[:,:],f4,f4,f4,f4[:,:])')
+def ms_sadd_pointwise(a,b,alpha,beta,out):
+    n = a.shape[0]
+    m = a.shape[1]
+    i,j = cuda.grid(2)
+
+    if i < n and j < m:
+        out[i,j] = alpha*a[i,j]+beta*b
+@cuda.jit('void(f4[:,:],f4,f4[:,:])')
+def ms_add_pointwise(a,b,out):
+    n = a.shape[0]
+    m = a.shape[1]
+    i,j = cuda.grid(2)
+
+    if i < n and j < m:
+        out[i,j] = a[i,j]+b
+
+@cuda.jit('void(f4[:],f4,f4,f4,f4[:])')
+def vs_sadd_pointwise(a,b,alpha,beta,out):
+    n = a.shape[0]
+    i = cuda.grid(1)
+
+    if i < n:
+        out[i] = alpha*a[i]+beta*b
+@cuda.jit('void(f4[:],f4,f4[:])')
+def vs_add_pointwise(a,b,out):
+    n = a.shape[0]
+    i = cuda.grid(1)
+
+    if i < n:
+        out[i] = a[i]+b
+
+@cuda.jit('void(f4[:,:],f4[:],f4,f4,f4[:,:])')
+def mv0_sadd_pointwise(a,b,alpha,beta,out):
+    n = a.shape[0]
+    m = a.shape[1]
+    i,j = cuda.grid(2)
+
+    if i < n and n < m:
+        out[i,j] = alpha*a[i,j]+beta*b[i]
+@cuda.jit('void(f4[:,:],f4[:],f4[:,:])')
+def mv0_add_pointwise(a,b,out):
+    n = a.shape[0]
+    m = a.shape[1]
+    i,j = cuda.grid(2)
+
+    if i < n and n < m:
+        out[i,j] = a[i,j]+b[i]
+
+@cuda.jit('void(f4[:,:],f4[:],f4,f4,f4[:,:])')
+def mv1_sadd_pointwise(a,b,alpha,beta,out):
+    n = a.shape[0]
+    m = a.shape[1]
+    i,j = cuda.grid(2)
+
+    if i < n and j < m:
+        out[i,j] = alpha*a[i,j]+beta*b[j]
+@cuda.jit('void(f4[:,:],f4[:],f4[:,:])')
+def mv1_add_pointwise(a,b,out):
+    n = a.shape[0]
+    m = a.shape[1]
+    i,j = cuda.grid(2)
+
+    if i < n and j < m:
+        out[i,j] = a[i,j]+b[j]
+
+@cuda.jit('void(f4[:,:],f4[:,:],f4,f4,f4[:,:])')
+def mv0f_sadd_pointwise(a,b,alpha,beta,out):
+    n = a.shape[0]
+    m = a.shape[1]
+    i,j = cuda.grid(2)
+
+    if i < n and n < m:
+        out[i,j] = alpha*a[i,j]+beta*b[i,0]
+@cuda.jit('void(f4[:,:],f4[:,:],f4[:,:])')
+def mv0f_add_pointwise(a,b,out):
+    n = a.shape[0]
+    m = a.shape[1]
+    i,j = cuda.grid(2)
+
+    if i < n and n < m:
+        out[i,j] = a[i,j]+b[i,0]
+
+@cuda.jit('void(f4[:,:],f4[:,:],f4,f4,f4[:,:])')
+def mv1f_sadd_pointwise(a,b,alpha,beta,out):
+    n = a.shape[0]
+    m = a.shape[1]
+    i,j = cuda.grid(2)
+
+    if i < n and j < m:
+        out[i,j] = alpha*a[i,j]+beta*b[0,j]
+@cuda.jit('void(f4[:,:],f4[:,:],f4[:,:])')
+def mv1f_add_pointwise(a,b,out):
+    n = a.shape[0]
+    m = a.shape[1]
+    i,j = cuda.grid(2)
+
+    if i < n and j < m:
+        out[i,j] = a[i,j]+b[0,j]
+
+def cu_reshape(d_a, a_shape, a_strides, a_dtype):
+    """Reshapes d_a to have same dimensions as a
+    
+    Parameters
+    ----------
+    d_a
+        Pointer to DeviceNDArray.
+    a_shape
+        Target shape for array.
+    a_strides
+        Target strides for array.
+    a_dtype
+        Target dtype for array.
+    """
+
+    if np.prod(d_a.shape) != np.prod(a_shape):
+        raise ValueError('total size of new array must be unchanged')
+    if d_a.ndim > 2 and len(a_shape) > 2:
+        raise NotImplementedError
+
+    out = cuda.devicearray.DeviceNDArray(
+            shape=a_shape, strides=a_strides,
+            dtype=a_dtype,gpu_data=d_a.gpu_data)
+    return out
+
+def check_array(a):
+    ok_types = [np.int, np.float32, np.float64]
+    if type(a) == np.ndarray:
+        a = np.array(a, order='F')
+    elif type(a) == cuda.cudadrv.devicearray.DeviceNDArray:
+        pass
+    else:
+        a = np.array(a)
+        if a.dtype not in ok_types:
+            raise ValueError('input of type '+str(a.dtype)+
+                             ' is not supported')
+        else:
+            a = np.array(a,dtype=np.float32, order='F')
+    if a.dtype == np.float32:
+        out_dtype = a.dtype
+    else:
+        raise NotImplementedError
+    return (a, out_dtype)
 

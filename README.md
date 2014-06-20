@@ -25,20 +25,40 @@ out = gp.function(*args)
 - gp.mult: np.multiply drop-in (matrix-matrix and vector-vector multiplication)
 
 ### Speedup on Tesla K40 vs. Xeon E-5 1620 (with MKL)
+20x for dot
+
+15x for add
 
 ```
-Parameters:
-             Matrix Size: (8192, 8192)
-             nIter: 10
+Parameters for dot:
+         Matrix Size: (4096, 4096)
+         nIter: 10
 
 ---------------Numpy based dot---------------
 Time to create arrays:
-1.973649 s
+0.482110 s
 Time for 10 dots:
-69.731279 s
+7.651291 s
 -----------NumbaPro GPU based dot------------
 Time to create arrays:
-3.788626 s
+0.857696 s
 Time for 10 dots:
-3.224349 s
+0.412212 s
+
+---------------------------------------------
+
+Parameters for add:
+         Matrix Size: (4096, 4096)
+         nIter: 100
+
+---------------Numpy based add---------------
+Time to create arrays:
+0.484548 s
+Time for 100 adds:
+2.456518 s
+-----------NumbaPro GPU based add------------
+Time to create arrays:
+0.837742 s
+Time for 100 adds:
+0.163046 s
 ```
