@@ -4,6 +4,7 @@ and supporting numbapro cuda kernels.
 Jesse Livezey and Zayd Enam
 May 7th 2014
 """
+from __future__ import division
 __authors__   = "Jesse Livezey, Zayd Enam"
 __copyright__ = "(c) 2014, Jesse Livezey, Zayd Enam"
 __license__   = "The MIT License (MIT)"
@@ -58,7 +59,7 @@ class Gpupy(object):
             Array will be filled with result if given.
         """
 
-        b, outd_type = check_array(b)
+        b, out_dtype = check_array(b)
         a, out_dtype = check_array(a)
 
         if out == cuda.cudadrv.devicearray.DeviceNDArray:
@@ -182,7 +183,7 @@ class Gpupy(object):
             Scales b before addition.
         """
 
-        b, outd_type = check_array(b)
+        b, out_dtype = check_array(b)
         a, out_dtype = check_array(a)
 
         if out == cuda.cudadrv.devicearray.DeviceNDArray:
@@ -345,7 +346,7 @@ class Gpupy(object):
         if alpha is not None:
             raise NotImplementedError
 
-        b, outd_type = check_array(b)
+        b, out_dtype = check_array(b)
         a, out_dtype = check_array(a)
 
         if out == cuda.cudadrv.devicearray.DeviceNDArray:
@@ -376,6 +377,7 @@ class Gpupy(object):
 
             blockdim2 = (32,32)
             griddim2 = (int(ceil(a_dim[0]/blockdim2[0])),int(ceil(a_dim[1]/blockdim2[1])))
+            print 
             mmultiply_pointwise[griddim2,blockdim2](a,b,out)
 
         elif a.ndim == 1 and b.ndim == 1:
@@ -389,6 +391,7 @@ class Gpupy(object):
                 raise ValueError('matrices are not aligned')
             blockdim = 32
             griddim = int(ceil(a_dim[0]/blockdim))
+            print griddim
             vmultiply_pointwise[griddim,blockdim](a,b,out)
         else:
             raise NotImplementedError
@@ -589,14 +592,14 @@ def cu_reshape(d_a, a_shape, a_strides, a_dtype):
     return out
 
 def check_array(a):
-    ok_types = [np.int, np.float32, np.float64]
-    if type(a) == np.ndarray:
-        a = np.array(a, order='F')
-    elif type(a) == cuda.cudadrv.devicearray.DeviceNDArray:
+    ok_dtypes = [np.int, np.float32, np.float64]
+    if isinstance(a, np.ndarray):
+        a = cuda.to_device(np.array(a, dtype=np.float32, order='F'))
+    elif isinstance(a, cuda.cudadrv.devicearray.DeviceNDArray):
         pass
     else:
         a = np.array(a)
-        if a.dtype not in ok_types:
+        if a.dtype not in ok_dtypes:
             raise ValueError('input of type '+str(a.dtype)+
                              ' is not supported')
         else:

@@ -8,7 +8,7 @@ class test_T():
 		self.rng = np.random.RandomState(0)
 
 	def test_transpose(self):
-		a = self.rng.rand(128, 1024).astype(np.float32)
+		a = self.rng.rand(129, 1025).astype(np.float32)
 
 		out_np = a.T
 		out_gp = self.gp.T(a).copy_to_host()
