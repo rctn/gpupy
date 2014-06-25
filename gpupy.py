@@ -415,15 +415,13 @@ class Gpupy(object):
         a, out_dtype = check_array(a)
 
         a_dim = a.shape
-        a_strides = a.strides
-        a_dtype = a.dtype
 
         if a.ndim == 2:
-            if type(a) == np.ndarray:
-                a = cuda.to_device(a.ravel(order='F'))
-
-            self.blas.scal(alpha, a)
-            a = cu_reshape(a, a_dim, a_strides, a_dtype)
+            a_strides = a.strides
+            a_dtype = a.dtype
+            d_flat_a = cu_reshape(a, (np.prod(a_dim),), (a_strides[0],), a_dtype)
+            self.blas.scal(alpha, d_flat_a)
+            a = cu_reshape(d_flat_a, a_dim, a_strides, a_dtype)
         elif a.ndim == 1:
             if type(a) == np.ndarray:
                 a = cuda.to_device(a)

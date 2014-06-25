@@ -14,7 +14,7 @@ class test_relu():
 
                 out_np = copy.deepcopy(a)
                 out_np[out_np<t] = 0.
-		out_gp = self.gp.relu(a, t=.5).copy_to_host()
+		out_gp = self.gp.relu(a, thresh=t).copy_to_host()
 
 		assert(np.allclose(out_np, out_gp))
 
