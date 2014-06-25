@@ -24,8 +24,6 @@ class test_add():
 
         out_np = (alpha*a+beta*b).astype(np.float32)
         out_gp = self.gp.add(a,b,alpha = alpha, beta = beta).copy_to_host()
-        print out_np
-        print out_gp
 
         assert(np.allclose(out_np, out_gp, atol = 1.e-5))
 
@@ -46,8 +44,6 @@ class test_add():
 
         out_np = (alpha*a+beta*b).astype(np.float32)
         out_gp = self.gp.add(a,b,alpha = alpha, beta = beta).copy_to_host()
-        print out_np
-        print out_gp
 
         assert(np.allclose(out_np, out_gp, atol = 1.e-5))
 
@@ -59,8 +55,6 @@ class test_add():
 
         out_np = (alpha*a+beta*b).astype(np.float32)
         out_gp = self.gp.add(a,b,alpha = alpha, beta = beta).copy_to_host()
-        print out_np
-        print out_gp
 
         assert(np.allclose(out_np, out_gp, atol = 1.e-5))
 
@@ -70,8 +64,6 @@ class test_add():
 
         out_np = (a+b).astype(np.float32)
         out_gp = self.gp.add(a,b).copy_to_host()
-        print out_np
-        print out_gp
 
         assert(np.allclose(out_np, out_gp, atol = 1.e-5))
 
@@ -83,8 +75,6 @@ class test_add():
 
         out_np = (alpha*a+beta*b).astype(np.float32)
         out_gp = self.gp.add(a,b,alpha = alpha, beta = beta).copy_to_host()
-        print out_np
-        print out_gp
 
         assert(np.allclose(out_np, out_gp, atol = 1.e-5))
 
@@ -94,8 +84,6 @@ class test_add():
 
         out_np = (a+b).astype(np.float32)
         out_gp = self.gp.add(a,b).copy_to_host()
-        print out_np
-        print out_gp
 
         assert(np.allclose(out_np, out_gp, atol = 1.e-5))
 
@@ -107,8 +95,6 @@ class test_add():
 
         out_np = (alpha*a+beta*b).astype(np.float32)
         out_gp = self.gp.add(a,b,alpha = alpha, beta = beta).copy_to_host()
-        print out_np
-        print out_gp
 
         assert(np.allclose(out_np, out_gp, atol = 1.e-5))
 
@@ -118,31 +104,31 @@ class test_add():
 
         out_np = (a+b).astype(np.float32)
         out_gp = self.gp.add(a,b).copy_to_host()
-        print out_np
-        print out_gp
 
         assert(np.allclose(out_np, out_gp, atol = 1.e-5))
 
     def test_ma_scale(self):
-        a = self.rng.rand(1025).astype(np.float32)[:,np.newaxis]
+        a = self.rng.rand(1025, 1025).astype(np.float32)
         b = self.rng.rand(1025).astype(np.float32)
         alpha = .4
         beta = -1.6
 
-        out_np = (alpha*a+beta*b).astype(np.float32)
-        out_gp = self.gp.add(a,b,alpha = alpha, beta = beta).copy_to_host()
-        print out_np
-        print out_gp
+        out_np = (alpha*a+beta*b[np.newaxis,:]).astype(np.float32)
+        out_gp = self.gp.add(a,b[np.newaxis,:],alpha = alpha, beta = beta).copy_to_host()
+        assert(np.allclose(out_np, out_gp, atol = 1.e-5))
 
+        out_np = (alpha*a+beta*b[:,np.newaxis]).astype(np.float32)
+        out_gp = self.gp.add(a,b[:,np.newaxis],alpha = alpha, beta = beta).copy_to_host()
         assert(np.allclose(out_np, out_gp, atol = 1.e-5))
 
     def test_ma(self):
-        a = self.rng.rand(1025).astype(np.float32)[:,np.newaxis]
+        a = self.rng.rand(1025, 1025).astype(np.float32)
         b = self.rng.rand(1025).astype(np.float32)
 
-        out_np = (a+b).astype(np.float32)
-        out_gp = self.gp.add(a,b).copy_to_host()
-        print out_np
-        print out_gp
+        out_np = (a+b[np.newaxis,:]).astype(np.float32)
+        out_gp = self.gp.add(a,b[np.newaxis,:]).copy_to_host()
+        assert(np.allclose(out_np, out_gp, atol = 1.e-5))
 
+        out_np = (a+b[:,np.newaxis]).astype(np.float32)
+        out_gp = self.gp.add(a,b[:,np.newaxis]).copy_to_host()
         assert(np.allclose(out_np, out_gp, atol = 1.e-5))

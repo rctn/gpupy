@@ -433,6 +433,34 @@ class Gpupy(object):
 
         return a
 
+    def sum(self, a, out=None, axis=None):
+        """Sum array elements.
+
+        Parameters
+        ----------
+        a : array-like
+           Array to sum.
+        out : array-like
+            Result will be stored in this array.
+        axis : int
+            1 or 0 for 2D arrays.
+        """
+        pass
+
+    def mean(self, a, out=None, axis=None):
+        """Average array elements.
+
+        Parameters
+        ----------
+        a : array-like
+           Array to average.
+        out : array-like
+            Result will be stored in this array.
+        axis : int
+            1 or 0 for 2D arrays.
+        """
+        pass
+
 @cuda.jit('void(f4[:,:],f4[:,:],f4[:,:])')
 def mmultiply_pointwise(a,b,out):
     n = a.shape[0]
@@ -592,6 +620,13 @@ def cu_reshape(d_a, a_shape, a_strides, a_dtype):
     return out
 
 def check_array(a):
+    """Checks whether array is valid for moving to gpu and moves data to gpu.
+
+    Parameters
+    ----------
+    a : array-like
+        Array to move to gpu
+    """
     ok_dtypes = [np.int, np.float32, np.float64]
     if isinstance(a, np.ndarray):
         a = cuda.to_device(np.array(a, dtype=np.float32, order='F'))
