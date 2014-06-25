@@ -445,7 +445,7 @@ class Gpupy(object):
         axis : int
             1 or 0 for 2D arrays.
         """
-        pass
+        raise NotImplementedError
 
     def mean(self, a, out=None, axis=None):
         """Average array elements.
@@ -459,7 +459,25 @@ class Gpupy(object):
         axis : int
             1 or 0 for 2D arrays.
         """
-        pass
+        raise NotImplementedError
+
+    def diag(self, a, out=None):
+        raise NotImplementedError
+
+    def zero_diag(self, a, out=None):
+        raise NotImplementedError
+
+    def zero_diag(self, a, out=None):
+        raise NotImplementedError
+
+    def relu(self, a, thresh=0., neg=False, out=None):
+        raise NotImplementedError
+
+    def ones(shape, out=None):
+        raise NotImplementedError
+
+    def zeros(shape, out=None):
+        raise NotImplementedError
 
 @cuda.jit('void(f4[:,:],f4[:,:],f4[:,:])')
 def mmultiply_pointwise(a,b,out):
