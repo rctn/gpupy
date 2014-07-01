@@ -209,8 +209,11 @@ class Gpupy(object):
                     raise ValueError('matrices are not aligned')
 
                 self.blas.geam('N', 'N', a_dim[0], a_dim[1], alpha, a, beta, b, out)
+            elif False:
+                #m_nm_add_pointwise(a,b,out):
+                pass
             else:
-                raise NotImplementedError('TODO')
+                raise ValueError('matricies not aligned')
         elif a.ndim == 1 and b.ndim == 1:
             if a_dim[0] != b_dim[0]:
                 raise ValueError('matricies not aligned')
@@ -609,6 +612,40 @@ def mv1f_add_pointwise(a,b,out):
 
     if i < n and j < m:
         out[i,j] = a[i,j]+b[0,j]
+
+@cuda.jit('void(f4[:,:],f4[:,:],f4[:,:])')
+def m_nm_add_pointwise(a,b,out):
+    n = a.shape[0]
+    m = a.shape[1]
+    i,j = cuda.grid(2)
+
+    if i < n and j < m:
+        out[i,j] = a[i,j]+b[0,j]
+@cuda.jit('void(f4[:,:],f4[:,:],f4,f4,f4[:,:])')
+def m_nm_sadd_pointwise(a,b,alpha,beta,out):
+    n = a.shape[0]
+    m = a.shape[1]
+    i,j = cuda.grid(2)
+
+    if i < n and j < m:
+        out[i,j] = alpha*a[i,j]+beta*b[0,j]
+
+@cuda.jit('void(f4[:,:],f4[:,:],f4[:,:])')
+def m_mn_add_pointwise(a,b,out):
+    n = a.shape[0]
+    m = a.shape[1]
+    i,j = cuda.grid(2)
+
+    if i < n and j < m:
+        out[i,j] = a[i,j]+b[i,0]
+@cuda.jit('void(f4[:,:],f4[:,:],f4,f4,f4[:,:])')
+def m_mn_sadd_pointwise(a,b,alpha,beta,out):
+    n = a.shape[0]
+    m = a.shape[1]
+    i,j = cuda.grid(2)
+
+    if i < n and j < m:
+        out[i,j] = alpha*a[i,j]+beta*b[i,0]
 
 def cu_reshape(d_a, a_shape, a_strides, a_dtype):
     """Reshapes d_a to have same dimensions as a

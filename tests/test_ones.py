@@ -1,20 +1,20 @@
 from gpupy import Gpupy
 import numpy as np
-import copy
 
-class test_relu():
+class test_ones():
 
 	def setup(self):
 		self.gp = Gpupy()
-		self.rng = np.random.RandomState(0)
 
-	def test_relu(self):
-		a = self.rng.rand(129, 1025).astype(np.float32)
-                t = .5
-
-                out_np = copy.deepcopy(a)
-                out_np[out_np<t] = 0.
-		out_gp = self.gp.relu(a, t=.5).copy_to_host()
-
+	def test_ones(self):
+                out_np = np.ones(shape=(129,1025), dtype=np.float32)
+		out_gp = self.gp.ones(shape=(129,1025))
 		assert(np.allclose(out_np, out_gp))
 
+                out_np = np.ones(shape=129, dtype=np.float32)
+		out_gp = self.gp.ones(shape=129)
+		assert(np.allclose(out_np, out_gp))
+
+                out_np = np.ones(129, dtype=np.float32)
+		out_gp = self.gp.ones(129)
+		assert(np.allclose(out_np, out_gp))
