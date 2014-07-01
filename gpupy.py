@@ -196,24 +196,74 @@ class Gpupy(object):
         a_dim = a.shape
         b_dim = b.shape
 
+        # Matrix-matrix addition
         if a.ndim == 2 and b.ndim == 2:
-            if a.shape == b.shape:
-                if a_dim[0] != b_dim[0] and a_dim[1] != b_dim[1]:
-                    raise ValueError('matrices are not aligned')
-
+            # Full-size matricies
+            if a_dim == b_dim:
                 if out is None:
-                    out = cuda.device_array((a_dim[0], b_dim[1]), dtype=out_dtype, order='F')
-                elif out.shape[0] == a_dim[0] and out.shape[1] == b_dim[1]:
+                    out = cuda.device_array((a_dim[0], a_dim[1]), dtype=out_dtype, order='F')
+                elif out.shape[0] == a_dim[0] and out.shape[1] == a_dim[1]:
                     pass
                 else:
                     raise ValueError('matrices are not aligned')
 
                 self.blas.geam('N', 'N', a_dim[0], a_dim[1], alpha, a, beta, b, out)
-            elif False:
-                #m_nm_add_pointwise(a,b,out):
-                pass
+            # np.newaxis matricies
+            elif a_dim[0] == b_dim[0] and b_dim[1] == 0:
+                if out is None:
+                    out = cuda.device_array((a_dim[0], a_dim[1]), dtype=out_dtype, order='F')
+                elif out.shape[0] == a_dim[0] and out.shape[1] == a_dim[1]:
+                    pass
+                else:
+                    raise ValueError('matrices are not aligned')
+                blockdim = 32
+                griddim = int(ceil(a_dim[0]/blockdim))
+                if alpha != 1. or beta != 1.:
+                    mv0f_sadd_pointwise(a,b,alpha,beta,out)
+                else:
+                    mv0f_add_pointwise(a,b,out)
+            elif a_dim[1] == b_dim[1] and b_dim[0] == 0:
+                if out is None:
+                    out = cuda.device_array((a_dim[0], a_dim[1]), dtype=out_dtype, order='F')
+                elif out.shape[0] == a_dim[0] and out.shape[1] == a_dim[1]:
+                    pass
+                else:
+                    raise ValueError('matrices are not aligned')
+                blockdim = 32
+                griddim = int(ceil(a_dim[1]/blockdim))
+                if alpha != 1. or beta != 1.:
+                    mv1f_sadd_pointwise(a,b,alpha,beta,out)
+                else:
+                    mv1f_add_pointwise(a,b,out)
+            elif b_dim[0] == a_dim[0] and a_dim[1] == 0:
+                if out is None:
+                    out = cuda.device_array((b_dim[0], b_dim[1]), dtype=out_dtype, order='F')
+                elif out.shape[0] == a_dim[0] and out.shape[1] == a_dim[1]:
+                    pass
+                else:
+                    raise ValueError('matrices are not aligned')
+                blockdim = 32
+                griddim = int(ceil(b_dim[0]/blockdim))
+                if alpha != 1. or beta != 1.:
+                    mv0f_sadd_pointwise(b,a,beta,alpha,out)
+                else:
+                    mv0f_add_pointwise(b,a,out)
+            elif b_dim[1] == a_dim[1] and a_dim[0] == 0:
+                if out is None:
+                    out = cuda.device_array((b_dim[0], b_dim[1]), dtype=out_dtype, order='F')
+                elif out.shape[0] == a_dim[0] and out.shape[1] == a_dim[1]:
+                    pass
+                else:
+                    raise ValueError('matrices are not aligned')
+                blockdim = 32
+                griddim = int(ceil(b_dim[1]/blockdim))
+                if alpha != 1. or beta != 1.:
+                    mv1f_sadd_pointwise(b,a,beta,alpha,out)
+                else:
+                    mv1f_add_pointwise(b,a,out)
             else:
-                raise ValueError('matricies not aligned')
+                raise ValueError('matrices are not aligned')
+        # Vector-vector addition
         elif a.ndim == 1 and b.ndim == 1:
             if a_dim[0] != b_dim[0]:
                 raise ValueError('matricies not aligned')
@@ -229,6 +279,7 @@ class Gpupy(object):
                 vsadd_pointwise[griddim,blockdim](a,b,alpha,beta,out)
             else:
                 vadd_pointwise[griddim,blockdim](a,b,out)
+        # Matrix-scalar addition
         elif a.ndim == 2 and b.ndim == 0:
             if out is None:
                 out = cuda.device_array(a_dim, dtype=out_dtype, order='F')
@@ -242,6 +293,7 @@ class Gpupy(object):
                 ms_sadd_pointwise[griddim,blockdim](a,b,alpha,beta,out)
             else:
                 ms_add_pointwise[griddim,blockdim](a,b,out)
+        # Scalar-matrix addition
         elif a.ndim == 0 and b.ndim == 2:
             if out is None:
                 out = cuda.device_array(b_dim, dtype=out_dtype, order='F')
@@ -255,6 +307,7 @@ class Gpupy(object):
                 ms_sadd_pointwise[griddim,blockdim](b,a,beta,alpha,out)
             else:
                 ms_add_pointwise[griddim,blockdim](b,a,out)
+        # Vector-scalar addition
         elif a.ndim == 1 and b.ndim == 0:
             if out is None:
                 out = cuda.device_array(a_dim, dtype=out_dtype, order='F')
@@ -268,6 +321,7 @@ class Gpupy(object):
                 vs_sadd_pointwise[griddim,blockdim](a,b,alpha,beta,out)
             else:
                 vs_add_pointwise[griddim,blockdim](a,b,out)
+        # Scalar-vector addition
         elif a.ndim == 0 and b.ndim == 1:
             if out is None:
                 out = cuda.device_array(b_dim, dtype=out_dtype, order='F')
@@ -281,6 +335,7 @@ class Gpupy(object):
                 vs_sadd_pointwise[griddim,blockdim](b,a,beta,alpha,out)
             else:
                 vs_add_pointwise[griddim,blockdim](b,a,out)
+        # Matrix-vector addition
         elif a.ndim == 2 and b.ndim == 1:
             if out is None:
                 out = cuda.device_array(a_dim, dtype=out_dtype, order='F')
@@ -302,6 +357,7 @@ class Gpupy(object):
                     mv1_add_pointwise[griddim,blockdim](a,b,out)
             else:
                 raise ValueError('matricies are not aligned')
+        # Vector-matrix addition
         elif a.ndim == 1 and b.ndim == 2:
             if out is None:
                 out = cuda.device_array(b_dim, dtype=out_dtype, order='F')
