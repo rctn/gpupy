@@ -36,7 +36,7 @@ class Gpupy(object):
         self.blas = numbapro.cudalib.cublas.Blas()
         self.stream = cuda.stream()
 
-    def syncronize(self):
+    def synchronize(self):
         """Synchronize cuda stream."""
         self.stream.synchronize()
 
