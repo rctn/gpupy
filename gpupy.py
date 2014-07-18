@@ -208,7 +208,7 @@ class Gpupy(object):
                     raise ValueError('matrices are not aligned')
 
                 self.blas.geam('N', 'N', a_dim[0], a_dim[1], alpha, a, beta, b, out)
-            # np.newaxis matricies
+            # np.newaxis matrices
             elif a_dim[0] == b_dim[0] and b_dim[1] == 1:
                 if out is None:
                     out = cuda.device_array((a_dim[0], a_dim[1]), dtype=out_dtype, order='F')
@@ -216,12 +216,12 @@ class Gpupy(object):
                     pass
                 else:
                     raise ValueError('matrices are not aligned')
-                blockdim = 32
-                griddim = int(ceil(a_dim[0]/blockdim))
+                blockdim = (32,32)
+                griddim = (int(ceil(a_dim[0]/blockdim[0])),int(ceil(a_dim[1]/blockdim[1])))
                 if alpha != 1. or beta != 1.:
-                    mv0f_sadd_pointwise(a,b,alpha,beta,out)
+                    m_mn_sadd_pointwise[griddim,blockdim](a,b,alpha,beta,out)
                 else:
-                    mv0f_add_pointwise(a,b,out)
+                    m_mn_add_pointwise[griddim,blockdim](a,b,out)
             elif a_dim[1] == b_dim[1] and b_dim[0] == 1:
                 if out is None:
                     out = cuda.device_array((a_dim[0], a_dim[1]), dtype=out_dtype, order='F')
@@ -229,12 +229,12 @@ class Gpupy(object):
                     pass
                 else:
                     raise ValueError('matrices are not aligned')
-                blockdim = 32
-                griddim = int(ceil(a_dim[1]/blockdim))
+                blockdim = (32,32)
+                griddim = (int(ceil(a_dim[0]/blockdim[0])),int(ceil(a_dim[1]/blockdim[1])))
                 if alpha != 1. or beta != 1.:
-                    mv1f_sadd_pointwise(a,b,alpha,beta,out)
+                    m_nm_sadd_pointwise[griddim,blockdim](a,b,alpha,beta,out)
                 else:
-                    mv1f_add_pointwise(a,b,out)
+                    m_nm_add_pointwise[griddim,blockdim](a,b,out)
             elif b_dim[0] == a_dim[0] and a_dim[1] == 1:
                 if out is None:
                     out = cuda.device_array((b_dim[0], b_dim[1]), dtype=out_dtype, order='F')
@@ -242,12 +242,12 @@ class Gpupy(object):
                     pass
                 else:
                     raise ValueError('matrices are not aligned')
-                blockdim = 32
-                griddim = int(ceil(b_dim[0]/blockdim))
+                blockdim = (32,32)
+                griddim = (int(ceil(b_dim[0]/blockdim[0])),int(ceil(b_dim[1]/blockdim[1])))
                 if alpha != 1. or beta != 1.:
-                    mv0f_sadd_pointwise(b,a,beta,alpha,out)
+                    m_mn_sadd_pointwise[griddim,blockdim](b,a,beta,alpha,out)
                 else:
-                    mv0f_add_pointwise(b,a,out)
+                    m_mn_add_pointwise[griddim,blockdim](b,a,out)
             elif b_dim[1] == a_dim[1] and a_dim[0] == 1:
                 if out is None:
                     out = cuda.device_array((b_dim[0], b_dim[1]), dtype=out_dtype, order='F')
@@ -255,12 +255,12 @@ class Gpupy(object):
                     pass
                 else:
                     raise ValueError('matrices are not aligned')
-                blockdim = 32
-                griddim = int(ceil(b_dim[1]/blockdim))
+                blockdim = (32,32)
+                griddim = (int(ceil(b_dim[0]/blockdim[0])),int(ceil(b_dim[1]/blockdim[1])))
                 if alpha != 1. or beta != 1.:
-                    mv1f_sadd_pointwise(b,a,beta,alpha,out)
+                    m_nm_sadd_pointwise[griddim,blockdim](b,a,beta,alpha,out)
                 else:
-                    mv1f_add_pointwise(b,a,out)
+                    m_nm_add_pointwise[griddim,blockdim](b,a,out)
             else:
                 raise ValueError('matrices are not aligned')
         # Vector-vector addition
@@ -408,7 +408,7 @@ class Gpupy(object):
         b, out_dtype = check_array(b)
         a, out_dtype = check_array(a)
 
-        if out == cuda.cudadrv.devicearray.DeviceNDArray:
+        if type(out) == cuda.cudadrv.devicearray.DeviceNDArray:
             pass
         elif out is None:
             pass
@@ -436,7 +436,6 @@ class Gpupy(object):
 
             blockdim2 = (32,32)
             griddim2 = (int(ceil(a_dim[0]/blockdim2[0])),int(ceil(a_dim[1]/blockdim2[1])))
-            print 
             mmultiply_pointwise[griddim2,blockdim2](a,b,out)
 
         elif a.ndim == 1 and b.ndim == 1:
@@ -450,7 +449,6 @@ class Gpupy(object):
                 raise ValueError('matrices are not aligned')
             blockdim = 32
             griddim = int(ceil(a_dim[0]/blockdim))
-            print griddim
             vmultiply_pointwise[griddim,blockdim](a,b,out)
         else:
             raise NotImplementedError
@@ -525,34 +523,102 @@ class Gpupy(object):
         raise NotImplementedError
 
     def relu(self, a, thresh=0., flip_x=0, out=None):
-        raise NotImplementedError
+        """Rectify input..
 
-    def ones(shape, out=None):
-        raise NotImplementedError
+        Parameters
+        ----------
+        a : array-like
+            Array to rectify.
+        thresh : float, optional
+            Value to start rectification.
+        flip_x : int (1 or 0), optional
+            Whether to rectify negative half (default) or positive half.
+        """
 
-    def zeros(shape, out=None):
-        raise NotImplementedError
+        a, out_dtype = check_array(a)
 
-@cuda.jit('void(f4[:,:],f4,int4,f4[:,:])')
-def thresh_m(a, thresh, flip_x, flip_y, out):
+        if type(out) == cuda.cudadrv.devicearray.DeviceNDArray:
+            pass
+        elif out is None:
+            pass
+        else:
+            raise NotImplementedError
+        if out is None:
+            out = a
+        elif out.shape == a_dim:
+            pass
+        else:
+            raise ValueError('matrices are not aligned')
+
+        a_dim = a.shape
+
+        if a.ndim == 2:
+            blockdim2 = (32,32)
+            griddim2 = (int(ceil(a_dim[0]/blockdim2[0])),int(ceil(a_dim[1]/blockdim2[1])))
+            thresh_m[griddim2,blockdim2](a, thresh, flip_x, out)
+        elif a.ndim == 1:
+            blockdim2 = 32
+            griddim2 = int(ceil(a_dim[0]/blockdim2[0]))
+            thresh_v[griddim2,blockdim2](a, thresh, flip_x, out)
+        else:
+            raise NotImplementedError
+
+        return a
+
+    def ones(self, shape, out=None):
+        return self.const(shape, 1., out)
+
+    def zeros(self, shape, out=None):
+        return self.const(shape, 0., out)
+
+    def const(self, shape, value, out=None):
+        if type(shape) != tuple:
+            shape = (shape,)
+        assert len(shape) > 0
+        if len(shape) > 2:
+            raise NotImplementedError
+
+        if out is None:
+            out = cuda.device_array(shape=shape, dtype=np.float32)
+        if out.shape != shape:
+            raise ValueError('matrices are not aligned')
+
+        out_dim = out.shape
+
+        if out.ndim == 2:
+            blockdim2 = (32,32)
+            griddim2 = (int(ceil(out_dim[0]/blockdim2[0])),int(ceil(out_dim[1]/blockdim2[1])))
+            const_m[griddim2,blockdim2](out, value)
+        elif out.ndim == 1:
+            blockdim = 32
+            griddim = int(ceil(out_dim[0]/blockdim))
+            const_v[griddim,blockdim](out, value)
+        else:
+            raise NotImplementedError
+
+        return out
+
+
+@cuda.jit('void(f4[:,:],f4,int8,f4[:,:])')
+def thresh_m(a, thresh, flip_x, out):
     n = out.shape[0]
     m = out.shape[1]
     i,j = cuda.grid(2)
 
     if i < n and j < m:
-        if flip_x ==0:
+        if flip_x == 0:
             if a[i,j] < thresh:
                 out[i,j] = 0.
         else:
             if a[i,j] > thresh:
                 out[i,j] = 0.
-@cuda.jit('void(f4[:,:],f4,int4,f4[:,:])')
-def thresh_v(a, thresh, flip_x, flip_y, out):
+@cuda.jit('void(f4[:],f4,int8,f4[:])')
+def thresh_v(a, thresh, flip_x, out):
     n = out.shape[0]
     i = cuda.grid(1)
 
     if i < n:
-        if flip_x ==0:
+        if flip_x == 0:
             if a[i] < thresh:
                 out[i] = 0.
         else:
@@ -692,40 +758,6 @@ def mv1_add_pointwise(a,b,out):
 
     if i < n and j < m:
         out[i,j] = a[i,j]+b[j]
-
-@cuda.jit('void(f4[:,:],f4[:,:],f4,f4,f4[:,:])')
-def mv0f_sadd_pointwise(a,b,alpha,beta,out):
-    n = a.shape[0]
-    m = a.shape[1]
-    i,j = cuda.grid(2)
-
-    if i < n and n < m:
-        out[i,j] = alpha*a[i,j]+beta*b[i,0]
-@cuda.jit('void(f4[:,:],f4[:,:],f4[:,:])')
-def mv0f_add_pointwise(a,b,out):
-    n = a.shape[0]
-    m = a.shape[1]
-    i,j = cuda.grid(2)
-
-    if i < n and n < m:
-        out[i,j] = a[i,j]+b[i,0]
-
-@cuda.jit('void(f4[:,:],f4[:,:],f4,f4,f4[:,:])')
-def mv1f_sadd_pointwise(a,b,alpha,beta,out):
-    n = a.shape[0]
-    m = a.shape[1]
-    i,j = cuda.grid(2)
-
-    if i < n and j < m:
-        out[i,j] = alpha*a[i,j]+beta*b[0,j]
-@cuda.jit('void(f4[:,:],f4[:,:],f4[:,:])')
-def mv1f_add_pointwise(a,b,out):
-    n = a.shape[0]
-    m = a.shape[1]
-    i,j = cuda.grid(2)
-
-    if i < n and j < m:
-        out[i,j] = a[i,j]+b[0,j]
 
 @cuda.jit('void(f4[:,:],f4[:,:],f4[:,:])')
 def m_nm_add_pointwise(a,b,out):
