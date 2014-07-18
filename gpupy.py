@@ -209,7 +209,7 @@ class Gpupy(object):
 
                 self.blas.geam('N', 'N', a_dim[0], a_dim[1], alpha, a, beta, b, out)
             # np.newaxis matricies
-            elif a_dim[0] == b_dim[0] and b_dim[1] == 0:
+            elif a_dim[0] == b_dim[0] and b_dim[1] == 1:
                 if out is None:
                     out = cuda.device_array((a_dim[0], a_dim[1]), dtype=out_dtype, order='F')
                 elif out.shape[0] == a_dim[0] and out.shape[1] == a_dim[1]:
@@ -222,7 +222,7 @@ class Gpupy(object):
                     mv0f_sadd_pointwise(a,b,alpha,beta,out)
                 else:
                     mv0f_add_pointwise(a,b,out)
-            elif a_dim[1] == b_dim[1] and b_dim[0] == 0:
+            elif a_dim[1] == b_dim[1] and b_dim[0] == 1:
                 if out is None:
                     out = cuda.device_array((a_dim[0], a_dim[1]), dtype=out_dtype, order='F')
                 elif out.shape[0] == a_dim[0] and out.shape[1] == a_dim[1]:
@@ -235,7 +235,7 @@ class Gpupy(object):
                     mv1f_sadd_pointwise(a,b,alpha,beta,out)
                 else:
                     mv1f_add_pointwise(a,b,out)
-            elif b_dim[0] == a_dim[0] and a_dim[1] == 0:
+            elif b_dim[0] == a_dim[0] and a_dim[1] == 1:
                 if out is None:
                     out = cuda.device_array((b_dim[0], b_dim[1]), dtype=out_dtype, order='F')
                 elif out.shape[0] == a_dim[0] and out.shape[1] == a_dim[1]:
@@ -248,7 +248,7 @@ class Gpupy(object):
                     mv0f_sadd_pointwise(b,a,beta,alpha,out)
                 else:
                     mv0f_add_pointwise(b,a,out)
-            elif b_dim[1] == a_dim[1] and a_dim[0] == 0:
+            elif b_dim[1] == a_dim[1] and a_dim[0] == 1:
                 if out is None:
                     out = cuda.device_array((b_dim[0], b_dim[1]), dtype=out_dtype, order='F')
                 elif out.shape[0] == a_dim[0] and out.shape[1] == a_dim[1]:
@@ -524,10 +524,7 @@ class Gpupy(object):
     def zero_diag(self, a, out=None):
         raise NotImplementedError
 
-    def zero_diag(self, a, out=None):
-        raise NotImplementedError
-
-    def relu(self, a, thresh=0., neg=False, out=None):
+    def relu(self, a, thresh=0., flip_x=0, out=None):
         raise NotImplementedError
 
     def ones(shape, out=None):
@@ -535,6 +532,67 @@ class Gpupy(object):
 
     def zeros(shape, out=None):
         raise NotImplementedError
+
+@cuda.jit('void(f4[:,:],f4,int4,f4[:,:])')
+def thresh_m(a, thresh, flip_x, flip_y, out):
+    n = out.shape[0]
+    m = out.shape[1]
+    i,j = cuda.grid(2)
+
+    if i < n and j < m:
+        if flip_x ==0:
+            if a[i,j] < thresh:
+                out[i,j] = 0.
+        else:
+            if a[i,j] > thresh:
+                out[i,j] = 0.
+@cuda.jit('void(f4[:,:],f4,int4,f4[:,:])')
+def thresh_v(a, thresh, flip_x, flip_y, out):
+    n = out.shape[0]
+    i = cuda.grid(1)
+
+    if i < n:
+        if flip_x ==0:
+            if a[i] < thresh:
+                out[i] = 0.
+        else:
+            if a[i] > thresh:
+                out[i] = 0.
+
+@cuda.jit('void(f4[:,:],f4)')
+def const_m(out, const):
+    n = out.shape[0]
+    m = out.shape[1]
+    i,j = cuda.grid(2)
+
+    if i < n and j < m:
+        out[i,j] = const
+@cuda.jit('void(f4[:],f4)')
+def const_v(out, const):
+    n = out.shape[0]
+    i = cuda.grid(1)
+
+    if i < n:
+        out[i] = const
+
+@cuda.jit('void(f4[:],f4[:,:])')
+def diag2m(a, out):
+    n = out.shape[0]
+    m = out.shape[1]
+    i,j = cuda.grid(2)
+
+    if i < n and j < m:
+        if i == j:
+            out[i,j] = a[i]
+        else:
+            out[i,j] = 0.
+@cuda.jit('void(f4[:],f4[:,:])')
+def diag2v(a, out):
+    n = out.shape[0]
+    i = cuda.grid(1)
+
+    if i < n:
+        a[i] = out[i,i]
 
 @cuda.jit('void(f4[:,:],f4[:,:],f4[:,:])')
 def mmultiply_pointwise(a,b,out):
