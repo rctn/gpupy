@@ -10,6 +10,6 @@ class test_zero_diag():
 	def test_zero_diag(self):
 		a = self.rng.rand(129, 129).astype(np.float32)
 
-		out_np = a-np.diag(a)
+		out_np = a-np.diag(np.diag(a))
 		out_gp = self.gp.zero_diag(a).copy_to_host()
 		assert(np.allclose(out_np, out_gp))

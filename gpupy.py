@@ -35,6 +35,8 @@ class Gpupy(object):
                 raise ValueError('GPU ID not found')
         self.blas = numbapro.cudalib.cublas.Blas()
         self.stream = cuda.stream()
+        self.blockdim = 32
+        self.blockdim2 = (32, 32)
 
     def synchronize(self):
         """Synchronize cuda stream."""
@@ -517,10 +519,63 @@ class Gpupy(object):
         raise NotImplementedError
 
     def diag(self, a, out=None):
-        raise NotImplementedError
+        """Creates vector from diagonal of matrix or
+        matrix with diagonal from vector.
 
-    def zero_diag(self, a, out=None):
-        raise NotImplementedError
+        Parameters
+        ----------
+        a : array-like
+            Vector or array from which to take diagonal.
+        out : array-like, optional
+            Output array.
+        """
+        a, out_dtype = check_array(a)
+
+        a_dim = a.shape
+
+        if a.ndim == 2:
+            if out is None:
+                out = cuda.device_array(shape=a_dim[0], dtype=out_dtype, order='F')
+            elif out.shape[0] == a_dim[0] and out.ndim == 1:
+                pass
+            else:
+                raise ValueError('matrices are not aligned')
+            griddim = int(ceil(a_dim[0]/self.blockdim))
+            diag2v[griddim, self.blockdim](a, out)
+
+        elif a.ndim == 1:
+            if out is None:
+                out = cuda.device_array(shape=(a_dim[0],a_dim[0]), dtype=out_dtype, order='F')
+            elif out.shape == (a_dim[0], a_dim[0]):
+                pass
+            else:
+                raise ValueError('matrices are not aligned')
+            griddim2 = (int(ceil(a_dim[0]/self.blockdim2[0])), int(ceil(a_dim[0]/self.blockdim2[1])))
+            diag2m[griddim2, self.blockdim2](a, out)
+        else:
+            raise NotImplementedError
+        
+        return out
+
+    def zero_diag(self, a):
+        """Set diagonal of matrix to zero.
+
+        Parameters
+        ----------
+        a : array-like
+            Array to set diagonal to zero
+        """
+        a, out_dtype = check_array(a)
+
+        a_dim = a.shape
+        
+        if a.ndim == 2:
+            griddim = int(ceil(a_dim[0]/self.blockdim))
+            zero_diag_m[griddim, self.blockdim](a)
+        else:
+            raise NotImplementedError
+
+        return a
 
     def relu(self, a, thresh=0., flip_x=0, out=None):
         """Rectify input..
@@ -641,6 +696,14 @@ def const_v(out, const):
     if i < n:
         out[i] = const
 
+@cuda.jit('void(f4[:,:])')
+def zero_diag_m(out):
+    n = out.shape[0]
+    i = cuda.grid(1)
+
+    if i < n:
+        out[i,i] = 0.
+
 @cuda.jit('void(f4[:],f4[:,:])')
 def diag2m(a, out):
     n = out.shape[0]
@@ -652,13 +715,13 @@ def diag2m(a, out):
             out[i,j] = a[i]
         else:
             out[i,j] = 0.
-@cuda.jit('void(f4[:],f4[:,:])')
+@cuda.jit('void(f4[:,:],f4[:])')
 def diag2v(a, out):
     n = out.shape[0]
     i = cuda.grid(1)
 
     if i < n:
-        a[i] = out[i,i]
+        out[i] = a[i,i]
 
 @cuda.jit('void(f4[:,:],f4[:,:],f4[:,:])')
 def mmultiply_pointwise(a,b,out):
