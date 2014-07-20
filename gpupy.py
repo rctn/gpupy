@@ -502,7 +502,25 @@ class Gpupy(object):
         axis : int
             1 or 0 for 2D arrays.
         """
-        raise NotImplementedError
+        a, out_dtype = check_array(a)
+
+        a_dim = a.shape
+        
+        if a.ndim == 2:
+            if axis is None:
+                a_strides = a.strides
+                d_flat_a = cu_reshape(a, (np.prod(a_dim),), (a_strides[0],), out_dtype)
+                out = self.blas.asum(d_flat_a)
+            elif axis == 0:
+                pass
+            elif axis == 1:
+                pass
+        elif a.ndim == 1:
+            out = self.blas.asum(a)
+            pass
+        else:
+            raise NotImplementedError
+        return out
 
     def mean(self, a, out=None, axis=None):
         """Average array elements.
@@ -516,7 +534,25 @@ class Gpupy(object):
         axis : int
             1 or 0 for 2D arrays.
         """
-        raise NotImplementedError
+        a, out_dtype = check_array(a)
+
+        a_dim = a.shape
+        
+        if a.ndim == 2:
+            if axis is None:
+                a_strides = a.strides
+                d_flat_a = cu_reshape(a, (np.prod(a_dim),), (a_strides[0],), out_dtype)
+                out = self.blas.asum(d_flat_a)/float(np.prod(a_dim))
+            elif axis == 0:
+                pass
+            elif axis == 1:
+                pass
+        elif a.ndim == 1:
+            out = self.blas.asum(a)/float(np.prod(a_dim))
+            pass
+        else:
+            raise NotImplementedError
+        return out
 
     def diag(self, a, out=None):
         """Creates vector from diagonal of matrix or
