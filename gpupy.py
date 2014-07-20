@@ -512,9 +512,26 @@ class Gpupy(object):
                 d_flat_a = cu_reshape(a, (np.prod(a_dim),), (a_strides[0],), out_dtype)
                 out = self.blas.asum(d_flat_a)
             elif axis == 0:
-                pass
+                if out is None:
+                    out = cuda.device_array(a_dim[1], dtype=out_dtype, order='F')
+                elif out.shape[0] == a_dim[1]:
+                    pass
+                else:
+                    raise ValueError('matrices are not aligned')
+                griddim = int(ceil(a_dim[1]/self.blockdim))
+                print a.shape
+                print out.shape
+                print griddim
+                sum_0[griddim, self.blockdim](a, out)
             elif axis == 1:
-                pass
+                if out is None:
+                    out = cuda.device_array(a_dim[0], dtype=out_dtype, order='F')
+                elif out.shape[0] == a_dim[0]:
+                    pass
+                else:
+                    raise ValueError('matrices are not aligned')
+                griddim = int(ceil(a_dim[0]/self.blockdim))
+                sum_1[griddim, self.blockdim](a, out)
         elif a.ndim == 1:
             out = self.blas.asum(a)
             pass
@@ -544,9 +561,26 @@ class Gpupy(object):
                 d_flat_a = cu_reshape(a, (np.prod(a_dim),), (a_strides[0],), out_dtype)
                 out = self.blas.asum(d_flat_a)/float(np.prod(a_dim))
             elif axis == 0:
-                pass
+                if out is None:
+                    out = cuda.device_array(a_dim[1], dtype=out_dtype, order='F')
+                elif out.shape[0] == a_dim[1]:
+                    pass
+                else:
+                    raise ValueError('matrices are not aligned')
+                griddim = int(ceil(a_dim[1]/self.blockdim))
+                print a.shape
+                print out.shape
+                print griddim
+                mean_0[griddim, self.blockdim](a, float(a_dim[0]), out)
             elif axis == 1:
-                pass
+                if out is None:
+                    out = cuda.device_array(a_dim[0], dtype=out_dtype, order='F')
+                elif out.shape[0] == a_dim[0]:
+                    pass
+                else:
+                    raise ValueError('matrices are not aligned')
+                griddim = int(ceil(a_dim[0]/self.blockdim))
+                mean_1[griddim, self.blockdim](a, float(a_dim[1]), out)
         elif a.ndim == 1:
             out = self.blas.asum(a)/float(np.prod(a_dim))
             pass
@@ -689,6 +723,49 @@ class Gpupy(object):
 
         return out
 
+@cuda.jit('void(f4[:,:],f4[:])')
+def sum_0(a, out):
+    n = a.shape[0]
+    m = a.shape[1]
+    i = cuda.grid(1)
+
+    if i < m:
+        out[i] = 0.
+        for jj in xrange(n):
+            out[i] = out[i]+a[jj,i]
+@cuda.jit('void(f4[:,:],f4[:])')
+def sum_1(a, out):
+    n = a.shape[0]
+    m = a.shape[1]
+    i = cuda.grid(1)
+
+    if i < n:
+        out[i] = 0.
+        for jj in xrange(m):
+            out[i] = out[i]+a[i,jj]
+
+@cuda.jit('void(f4[:,:],f4,f4[:])')
+def mean_0(a, div, out):
+    n = a.shape[0]
+    m = a.shape[1]
+    i = cuda.grid(1)
+
+    if i < m:
+        out[i] = 0.
+        for jj in xrange(n):
+            out[i] += a[jj,i]
+        out[i] = out[i]/div
+@cuda.jit('void(f4[:,:],f4,f4[:])')
+def mean_1(a, div, out):
+    n = a.shape[0]
+    m = a.shape[1]
+    i = cuda.grid(1)
+
+    if i < n:
+        out[i] = 0.
+        for jj in xrange(m):
+            out[i] += a[i,jj]
+        out[i] = out[i]/div
 
 @cuda.jit('void(f4[:,:],f4,int8,f4[:,:])')
 def thresh_m(a, thresh, flip_x, out):
