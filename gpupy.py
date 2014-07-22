@@ -647,7 +647,7 @@ class Gpupy(object):
 
         return a
 
-    def relu(self, a, thresh=0., flip_x=0, out=None):
+    def relu(self, a, thresh=0., set_val=0., flip_x=0, out=None):
         """Rectify input..
 
         Parameters
@@ -678,13 +678,12 @@ class Gpupy(object):
         a_dim = a.shape
 
         if a.ndim == 2:
-            blockdim2 = (32,32)
-            griddim2 = (int(ceil(a_dim[0]/blockdim2[0])),int(ceil(a_dim[1]/blockdim2[1])))
-            thresh_m[griddim2,blockdim2](a, thresh, flip_x, out)
+            griddim2 = (int(ceil(a_dim[0]/self.blockdim2[0])),int(ceil(a_dim[1]/self.blockdim2[1])))
+            thresh_m[griddim2,blockdim2](a, thresh, flip_x, set_val, out)
         elif a.ndim == 1:
             blockdim2 = 32
-            griddim2 = int(ceil(a_dim[0]/blockdim2[0]))
-            thresh_v[griddim2,blockdim2](a, thresh, flip_x, out)
+            griddim2 = int(ceil(a_dim[0]/self.blockdim))
+            thresh_v[griddim2,blockdim2](a, thresh, flip_x, set_val, out)
         else:
             raise NotImplementedError
 
@@ -767,8 +766,8 @@ def mean_1(a, div, out):
             out[i] += a[i,jj]
         out[i] = out[i]/div
 
-@cuda.jit('void(f4[:,:],f4,int8,f4[:,:])')
-def thresh_m(a, thresh, flip_x, out):
+@cuda.jit('void(f4[:,:],f4,int8,f4,f4[:,:])')
+def thresh_m(a, thresh, flip_x, set_val, out):
     n = out.shape[0]
     m = out.shape[1]
     i,j = cuda.grid(2)
@@ -776,22 +775,22 @@ def thresh_m(a, thresh, flip_x, out):
     if i < n and j < m:
         if flip_x == 0:
             if a[i,j] < thresh:
-                out[i,j] = 0.
+                out[i,j] = set_val
         else:
             if a[i,j] > thresh:
-                out[i,j] = 0.
-@cuda.jit('void(f4[:],f4,int8,f4[:])')
-def thresh_v(a, thresh, flip_x, out):
+                out[i,j] = set_val
+@cuda.jit('void(f4[:],f4,int8,f4,f4[:])')
+def thresh_v(a, thresh, flip_x, set_val,out):
     n = out.shape[0]
     i = cuda.grid(1)
 
     if i < n:
         if flip_x == 0:
             if a[i] < thresh:
-                out[i] = 0.
+                out[i] = set_val
         else:
             if a[i] > thresh:
-                out[i] = 0.
+                out[i] = set_val
 
 @cuda.jit('void(f4[:,:],f4)')
 def const_m(out, const):
