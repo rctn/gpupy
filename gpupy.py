@@ -648,7 +648,7 @@ class Gpupy(object):
         return a
 
     def relu(self, a, thresh=0., set_val=0., flip_x=0, out=None):
-        """Rectify input..
+        """Rectify input.
 
         Parameters
         ----------
@@ -660,7 +660,13 @@ class Gpupy(object):
             Whether to rectify negative half (default) or positive half.
         """
 
+        thresh, out_dtype = check_array(thresh)
+        
+        thresh_dim = thresh.shape
+
         a, out_dtype = check_array(a)
+
+        a_dim = a.shape
 
         if type(out) == cuda.cudadrv.devicearray.DeviceNDArray:
             pass
@@ -675,15 +681,34 @@ class Gpupy(object):
         else:
             raise ValueError('matrices are not aligned')
 
-        a_dim = a.shape
-
         if a.ndim == 2:
-            griddim2 = (int(ceil(a_dim[0]/self.blockdim2[0])),int(ceil(a_dim[1]/self.blockdim2[1])))
-            thresh_m[griddim2,blockdim2](a, thresh, flip_x, set_val, out)
+            if thresh.ndim == 2:
+                if a_dim == thresh_dim:
+                    griddim2 = (int(ceil(a_dim[0]/self.blockdim2[0])),int(ceil(a_dim[1]/self.blockdim2[1])))
+                    thresh_m_t[griddim2, self.blockdim2](a, thresh, flip_x, set_val, out)
+                elif a_dim[0] == thresh_dim[0] and thresh_dim[1] == 1:
+                    griddim = int(ceil(a_dim[0]/self.blockdim))
+                    thresh_m_tn[griddim, self.blockdim](a, thresh, flip_x, set_val, out)
+                elif a_dim[1] == thresh_dim[1] and thresh_dim[0] == 1:
+                    griddim = int(ceil(a_dim[1]/self.blockdim))
+                    thresh_m_nt[griddim, self.blockdim](a, thresh, flip_x, set_val, out)
+                else:
+                    raise ValueError('matrices are not aligned')
+            elif thresh.ndim == 1:
+                raise NotImplementedError
+            elif thresh.shape == ():
+                griddim2 = (int(ceil(a_dim[0]/self.blockdim2[0])),int(ceil(a_dim[1]/self.blockdim2[1])))
+                thresh_m[griddim2, self.blockdim2](a, thresh, flip_x, set_val, out)
+            else:
+                raise ValueError('matrices are not aligned')
         elif a.ndim == 1:
-            blockdim2 = 32
-            griddim2 = int(ceil(a_dim[0]/self.blockdim))
-            thresh_v[griddim2,blockdim2](a, thresh, flip_x, set_val, out)
+            if a_dim == thresh_dim:
+                pass
+            elif thresh_dim == ():
+                griddim2 = int(ceil(a_dim[0]/self.blockdim))
+                thresh_v[griddim2, self.blockdim](a, thresh, flip_x, set_val, out)
+            else:
+                raise ValueError('matrices are not aligned')
         else:
             raise NotImplementedError
 
@@ -779,6 +804,45 @@ def thresh_m(a, thresh, flip_x, set_val, out):
         else:
             if a[i,j] > thresh:
                 out[i,j] = set_val
+@cuda.jit('void(f4[:,:],f4[:,:],int8,f4,f4[:,:])')
+def thresh_m_t(a, thresh, flip_x, set_val, out):
+    n = out.shape[0]
+    m = out.shape[1]
+    i,j = cuda.grid(2)
+
+    if i < n and j < m:
+        if flip_x == 0:
+            if a[i,j] < thresh[i,j]:
+                out[i,j] = set_val
+        else:
+            if a[i,j] > thresh[i,j]:
+                out[i,j] = set_val
+@cuda.jit('void(f4[:,:],f4[:,:],int8,f4,f4[:,:])')
+def thresh_m_nt(a, thresh, flip_x, set_val, out):
+    n = out.shape[0]
+    m = out.shape[1]
+    i,j = cuda.grid(2)
+
+    if i < n and j < m:
+        if flip_x == 0:
+            if a[i,j] < thresh[0,j]:
+                out[i,j] = set_val
+        else:
+            if a[i,j] > thresh[0,j]:
+                out[i,j] = set_val
+@cuda.jit('void(f4[:,:],f4[:,:],int8,f4,f4[:,:])')
+def thresh_m_tn(a, thresh, flip_x, set_val, out):
+    n = out.shape[0]
+    m = out.shape[1]
+    i,j = cuda.grid(2)
+
+    if i < n and j < m:
+        if flip_x == 0:
+            if a[i,j] < thresh[i,0]:
+                out[i,j] = set_val
+        else:
+            if a[i,j] > thresh[i,0]:
+                out[i,j] = set_val
 @cuda.jit('void(f4[:],f4,int8,f4,f4[:])')
 def thresh_v(a, thresh, flip_x, set_val,out):
     n = out.shape[0]
@@ -790,6 +854,18 @@ def thresh_v(a, thresh, flip_x, set_val,out):
                 out[i] = set_val
         else:
             if a[i] > thresh:
+                out[i] = set_val
+@cuda.jit('void(f4[:],f4[:],int8,f4,f4[:])')
+def thresh_v_t(a, thresh, flip_x, set_val,out):
+    n = out.shape[0]
+    i = cuda.grid(1)
+
+    if i < n:
+        if flip_x == 0:
+            if a[i] < thresh[i]:
+                out[i] = set_val
+        else:
+            if a[i] > thresh[i]:
                 out[i] = set_val
 
 @cuda.jit('void(f4[:,:],f4)')
