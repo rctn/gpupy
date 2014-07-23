@@ -519,9 +519,6 @@ class Gpupy(object):
                 else:
                     raise ValueError('matrices are not aligned')
                 griddim = int(ceil(a_dim[1]/self.blockdim))
-                print a.shape
-                print out.shape
-                print griddim
                 sum_0[griddim, self.blockdim](a, out)
             elif axis == 1:
                 if out is None:
@@ -568,9 +565,6 @@ class Gpupy(object):
                 else:
                     raise ValueError('matrices are not aligned')
                 griddim = int(ceil(a_dim[1]/self.blockdim))
-                print a.shape
-                print out.shape
-                print griddim
                 mean_0[griddim, self.blockdim](a, float(a_dim[0]), out)
             elif axis == 1:
                 if out is None:
