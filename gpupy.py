@@ -46,6 +46,20 @@ class Gpupy(object):
         """Alias to synchronize."""
         self.synchronize()
 
+    def array(self, a):
+        """Creates an on-GPU array from a, a numpy array.
+        
+        Parameters
+        ----------
+        a : array-like
+            Array to be send to GPU.
+        """
+        if type(a) != np.ndarray:
+            raise NotImplementedError
+
+        out, out_dtype = _check_array(a)
+        return out
+
     def dot(self, a, b, out=None):
         """Takes the dot product of two 2D arrays or 1D vectors.
 
@@ -61,10 +75,10 @@ class Gpupy(object):
             Array will be filled with result if given.
         """
 
-        b, out_dtype = check_array(b)
-        a, out_dtype = check_array(a)
+        b, out_dtype = _check_array(b)
+        a, out_dtype = _check_array(a)
 
-        if out == cuda.cudadrv.devicearray.DeviceNDArray:
+        if type(out) == cuda.cudadrv.devicearray.DeviceNDArray:
             pass
         elif out is None:
             pass
@@ -138,9 +152,9 @@ class Gpupy(object):
             Array to overwrite with result.
         """
 
-        a, out_dtype = check_array(a)
+        a, out_dtype = _check_array(a)
             
-        if out == cuda.cudadrv.devicearray.DeviceNDArray:
+        if type(out) == cuda.cudadrv.devicearray.DeviceNDArray:
             pass
         elif out == None:
             pass
@@ -185,10 +199,10 @@ class Gpupy(object):
             Scales b before addition.
         """
 
-        b, out_dtype = check_array(b)
-        a, out_dtype = check_array(a)
+        b, out_dtype = _check_array(b)
+        a, out_dtype = _check_array(a)
 
-        if out == cuda.cudadrv.devicearray.DeviceNDArray:
+        if type(out) == cuda.cudadrv.devicearray.DeviceNDArray:
             pass
         elif out is None:
             pass
@@ -407,8 +421,8 @@ class Gpupy(object):
         if alpha is not None:
             raise NotImplementedError
 
-        b, out_dtype = check_array(b)
-        a, out_dtype = check_array(a)
+        b, out_dtype = _check_array(b)
+        a, out_dtype = _check_array(a)
 
         if type(out) == cuda.cudadrv.devicearray.DeviceNDArray:
             pass
@@ -458,7 +472,7 @@ class Gpupy(object):
         return out
 
     def sub(self, a, b, out = None, alpha = 1., beta = 1.):
-        return  self.add(a, b, alpha=alpha, beta=-beta)
+        return  self.add(a, b, out=out, alpha=alpha, beta=-beta)
 
     def scal(self, a, alpha):
         """Scale a 1D or 2D array by alpha.
@@ -471,7 +485,7 @@ class Gpupy(object):
             Scaling factor.
         """
 
-        a, out_dtype = check_array(a)
+        a, out_dtype = _check_array(a)
 
         a_dim = a.shape
 
@@ -502,7 +516,7 @@ class Gpupy(object):
         axis : int
             1 or 0 for 2D arrays.
         """
-        a, out_dtype = check_array(a)
+        a, out_dtype = _check_array(a)
 
         a_dim = a.shape
         
@@ -548,7 +562,7 @@ class Gpupy(object):
         axis : int
             1 or 0 for 2D arrays.
         """
-        a, out_dtype = check_array(a)
+        a, out_dtype = _check_array(a)
 
         a_dim = a.shape
         
@@ -593,7 +607,7 @@ class Gpupy(object):
         out : array-like, optional
             Output array.
         """
-        a, out_dtype = check_array(a)
+        a, out_dtype = _check_array(a)
 
         a_dim = a.shape
 
@@ -629,10 +643,10 @@ class Gpupy(object):
         a : array-like
             Array to set diagonal to zero
         """
-        a, out_dtype = check_array(a)
+        a, out_dtype = _check_array(a)
 
         a_dim = a.shape
-        
+
         if a.ndim == 2:
             griddim = int(ceil(a_dim[0]/self.blockdim))
             zero_diag_m[griddim, self.blockdim](a)
@@ -654,12 +668,10 @@ class Gpupy(object):
             Whether to rectify negative half (default) or positive half.
         """
 
-        thresh, out_dtype = check_array(thresh)
-        
+        thresh, out_dtype = _check_array(thresh)
         thresh_dim = thresh.shape
 
-        a, out_dtype = check_array(a)
-
+        a, out_dtype = _check_array(a)
         a_dim = a.shape
 
         if type(out) == cuda.cudadrv.devicearray.DeviceNDArray:
@@ -681,15 +693,22 @@ class Gpupy(object):
                     griddim2 = (int(ceil(a_dim[0]/self.blockdim2[0])),int(ceil(a_dim[1]/self.blockdim2[1])))
                     thresh_m_t[griddim2, self.blockdim2](a, thresh, flip_x, set_val, out)
                 elif a_dim[0] == thresh_dim[0] and thresh_dim[1] == 1:
-                    griddim = int(ceil(a_dim[0]/self.blockdim))
-                    thresh_m_tn[griddim, self.blockdim](a, thresh, flip_x, set_val, out)
+                    griddim2 = (int(ceil(a_dim[0]/self.blockdim2[0])),int(ceil(a_dim[1]/self.blockdim2[1])))
+                    thresh_m_tn[griddim2, self.blockdim2](a, thresh, flip_x, set_val, out)
                 elif a_dim[1] == thresh_dim[1] and thresh_dim[0] == 1:
-                    griddim = int(ceil(a_dim[1]/self.blockdim))
-                    thresh_m_nt[griddim, self.blockdim](a, thresh, flip_x, set_val, out)
+                    griddim2 = (int(ceil(a_dim[0]/self.blockdim2[0])),int(ceil(a_dim[1]/self.blockdim2[1])))
+                    thresh_m_nt[griddim2, self.blockdim2](a, thresh, flip_x, set_val, out)
                 else:
                     raise ValueError('matrices are not aligned')
             elif thresh.ndim == 1:
-                raise NotImplementedError
+                if thresh_dim[0] == a_dim[0]:
+                    griddim2 = (int(ceil(a_dim[0]/self.blockdim2[0])),int(ceil(a_dim[1]/self.blockdim2[1])))
+                    thresh_am_t[griddim2, self.blockdim2](a, thresh, flip_x, set_val, out)
+                elif thresh_dim[0] == a_dim[1]:
+                    griddim2 = (int(ceil(a_dim[0]/self.blockdim2[0])),int(ceil(a_dim[1]/self.blockdim2[1])))
+                    thresh_ma_t[griddim2, self.blockdim2](a, thresh, flip_x, set_val, out)
+                else:
+                    raise ValueError('matrices not aligned')
             elif thresh.shape == ():
                 griddim2 = (int(ceil(a_dim[0]/self.blockdim2[0])),int(ceil(a_dim[1]/self.blockdim2[1])))
                 thresh_m[griddim2, self.blockdim2](a, thresh, flip_x, set_val, out)
@@ -729,13 +748,11 @@ class Gpupy(object):
         out_dim = out.shape
 
         if out.ndim == 2:
-            blockdim2 = (32,32)
-            griddim2 = (int(ceil(out_dim[0]/blockdim2[0])),int(ceil(out_dim[1]/blockdim2[1])))
-            const_m[griddim2,blockdim2](out, value)
+            griddim2 = (int(ceil(out_dim[0]/self.blockdim2[0])),int(ceil(out_dim[1]/self.blockdim2[1])))
+            const_m[griddim2, self.blockdim2](out, value)
         elif out.ndim == 1:
-            blockdim = 32
-            griddim = int(ceil(out_dim[0]/blockdim))
-            const_v[griddim,blockdim](out, value)
+            griddim = int(ceil(out_dim[0]/self.blockdim))
+            const_v[griddim, self.blockdim](out, value)
         else:
             raise NotImplementedError
 
@@ -836,6 +853,32 @@ def thresh_m_tn(a, thresh, flip_x, set_val, out):
                 out[i,j] = set_val
         else:
             if a[i,j] > thresh[i,0]:
+                out[i,j] = set_val
+@cuda.jit('void(f4[:,:],f4[:],int8,f4,f4[:,:])')
+def thresh_am_t(a, thresh, flip_x, set_val, out):
+    n = out.shape[0]
+    m = out.shape[1]
+    i,j = cuda.grid(2)
+
+    if i < n and j < m:
+        if flip_x == 0:
+            if a[i,j] < thresh[i]:
+                out[i,j] = set_val
+        else:
+            if a[i,j] > thresh[i]:
+                out[i,j] = set_val
+@cuda.jit('void(f4[:,:],f4[:],int8,f4,f4[:,:])')
+def thresh_ma_t(a, thresh, flip_x, set_val, out):
+    n = out.shape[0]
+    m = out.shape[1]
+    i,j = cuda.grid(2)
+
+    if i < n and j < m:
+        if flip_x == 0:
+            if a[i,j] < thresh[j]:
+                out[i,j] = set_val
+        else:
+            if a[i,j] > thresh[j]:
                 out[i,j] = set_val
 @cuda.jit('void(f4[:],f4,int8,f4,f4[:])')
 def thresh_v(a, thresh, flip_x, set_val,out):
@@ -1063,7 +1106,7 @@ def cu_reshape(d_a, a_shape, a_strides, a_dtype):
             dtype=a_dtype,gpu_data=d_a.gpu_data)
     return out
 
-def check_array(a):
+def _check_array(a):
     """Checks whether array is valid for moving to gpu and moves data to gpu.
 
     Parameters
