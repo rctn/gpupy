@@ -26,7 +26,7 @@ class Gpupy(object):
         cuda functionality is used.
     """
 
-    def __init__(self, gpuID=None):
+    def __init__(self, gpuID=None, stream=None):
         if gpuID is not None:
             if gpuID < len(cuda.list_devices()) and gpuID >= 0:
                 cuda.close()
@@ -34,7 +34,11 @@ class Gpupy(object):
             else:
                 raise ValueError('GPU ID not found')
         self.blas = numbapro.cudalib.cublas.Blas()
-        self.stream = cuda.stream()
+        if stream is None:
+            self.stream = cuda.stream()
+        else:
+            assert isinstance(stream, numba.cuda.cudadrv.driver.Stream)
+            self.stream = stream
         self.blockdim = 32
         self.blockdim2 = (32, 32)
 
@@ -492,9 +496,9 @@ class Gpupy(object):
         if a.ndim == 2:
             a_strides = a.strides
             a_dtype = a.dtype
-            d_flat_a = cu_reshape(a, (np.prod(a_dim),), (a_strides[0],), a_dtype)
+            d_flat_a = _cu_reshape(a, (np.prod(a_dim),), (a_strides[0],), a_dtype)
             self.blas.scal(alpha, d_flat_a)
-            a = cu_reshape(d_flat_a, a_dim, a_strides, a_dtype)
+            a = _cu_reshape(d_flat_a, a_dim, a_strides, a_dtype)
         elif a.ndim == 1:
             if type(a) == np.ndarray:
                 a = cuda.to_device(a)
@@ -523,7 +527,7 @@ class Gpupy(object):
         if a.ndim == 2:
             if axis is None:
                 a_strides = a.strides
-                d_flat_a = cu_reshape(a, (np.prod(a_dim),), (a_strides[0],), out_dtype)
+                d_flat_a = _cu_reshape(a, (np.prod(a_dim),), (a_strides[0],), out_dtype)
                 out = self.blas.asum(d_flat_a)
             elif axis == 0:
                 if out is None:
@@ -569,7 +573,7 @@ class Gpupy(object):
         if a.ndim == 2:
             if axis is None:
                 a_strides = a.strides
-                d_flat_a = cu_reshape(a, (np.prod(a_dim),), (a_strides[0],), out_dtype)
+                d_flat_a = _cu_reshape(a, (np.prod(a_dim),), (a_strides[0],), out_dtype)
                 out = self.blas.asum(d_flat_a)/float(np.prod(a_dim))
             elif axis == 0:
                 if out is None:
@@ -1081,7 +1085,7 @@ def m_mn_sadd_pointwise(a,b,alpha,beta,out):
     if i < n and j < m:
         out[i,j] = alpha*a[i,j]+beta*b[i,0]
 
-def cu_reshape(d_a, a_shape, a_strides, a_dtype):
+def _cu_reshape(d_a, a_shape, a_strides, a_dtype):
     """Reshapes d_a to have same dimensions as a
     
     Parameters

@@ -1,4 +1,4 @@
-import gpupy
+import gpupy.gpupy as gpupy
 from numbapro import cuda
 import numpy as np
 
@@ -15,7 +15,7 @@ class test_reshape():
         shape = b.shape
         strides = b.strides
         dtype = b.dtype
-        c = gpupy.cu_reshape(a, shape, strides, dtype)
+        c = gpupy._cu_reshape(a, shape, strides, dtype)
         assert c.dtype == np.float32
         assert c.shape == shape
         assert c.strides == strides

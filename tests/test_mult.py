@@ -1,4 +1,4 @@
-from gpupy import Gpupy
+from gpupy.gpupy import Gpupy
 import numpy as np
 
 class test_mult():
