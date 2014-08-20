@@ -108,7 +108,7 @@ class Gpupy(object):
             else:
                 raise ValueError('matrices are not aligned')
 
-            self.blas.gemm('N', 'N', a_dim[0], b_dim[1], a_dim[1], 1, a, b, 0, out)
+            self.blas.gemm('N', 'N', a_dim[0], b_dim[1], a_dim[1], 1., a, b, 0., out)
 
         elif a.ndim == 2 and b.ndim == 1:
             if a_dim[1] != b_dim[0]:
@@ -245,7 +245,7 @@ class Gpupy(object):
             elif a_dim[1] == b_dim[1] and b_dim[0] == 1:
                 if out is None:
                     out = cuda.device_array((a_dim[0], a_dim[1]), dtype=out_dtype, order='F')
-                elif out.shape[0] == a_dim[0] and out.shape[1] == a_dim[1]:
+                elif out.shape == a_dim:
                     pass
                 else:
                     raise ValueError('matrices are not aligned')
