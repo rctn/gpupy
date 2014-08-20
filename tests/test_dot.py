@@ -12,9 +12,14 @@ class test_dot():
 		b = self.rng.rand(1025, 257).astype(np.float32)
 
 		out_np = np.dot(a, b)
+                print 'one'
 		out_gp = self.gp.dot(a, b).copy_to_host()
-
 		assert(np.allclose(out_np, out_gp))
+
+                out_gp = self.gp.zeros(shape=(129, 257))
+                print 'two'
+		self.gp.dot(a, b, out=out_gp)
+		assert(np.allclose(out_np, out_gp.copy_to_host()))
 
 	def test_gemv(self):		
 		a = self.rng.rand(129, 1025).astype(np.float32)

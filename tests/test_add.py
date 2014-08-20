@@ -14,8 +14,11 @@ class test_add():
 
         out_np = a+b
         out_gp = self.gp.add(a,b).copy_to_host()
-
         assert(np.allclose(out_np, out_gp))
+
+        out_gp = self.gp.zeros(shape=(129, 1025))
+        self.gp.add(a,b, out=out_gp)
+        assert(np.allclose(out_np, out_gp.copy_to_host()))
 
     def test_madd_scale(self):
         a = self.rng.rand(129, 1025).astype(np.float32)

@@ -82,7 +82,7 @@ class Gpupy(object):
         b, out_dtype = _check_array(b)
         a, out_dtype = _check_array(a)
 
-        if type(out) == cuda.cudadrv.devicearray.DeviceNDArray:
+        if isinstance(out, cuda.cudadrv.devicearray.DeviceNDArray):
             pass
         elif out is None:
             pass
@@ -745,7 +745,7 @@ class Gpupy(object):
             raise NotImplementedError
 
         if out is None:
-            out = cuda.device_array(shape=shape, dtype=np.float32)
+            out = cuda.device_array(shape=shape, dtype=np.float32, order='F')
         if out.shape != shape:
             raise ValueError('matrices are not aligned')
 
