@@ -27,7 +27,7 @@ out = gp.function(*args)
 ### Speedup on Tesla K40 vs. Xeon E-5 1620 (with MKL)
 20x for dot
 
-15x for add
+30x for add
 
 ```
 Parameters for dot:
@@ -36,14 +36,17 @@ Parameters for dot:
 
 ---------------Numpy based dot---------------
 Time to create arrays:
-0.482110 s
+0.812318 s
 Time for 10 dots:
-7.651291 s
+8.985346 s
 -----------NumbaPro GPU based dot------------
 Time to create arrays:
-0.857696 s
+0.865464 s
 Time for 10 dots:
-0.412212 s
+0.457248 s
+Time to transer results to host:
+0.028134 s
+19.6509260172 times speedup
 
 ---------------------------------------------
 
@@ -53,12 +56,15 @@ Parameters for add:
 
 ---------------Numpy based add---------------
 Time to create arrays:
-0.484548 s
+0.824676 s
 Time for 100 adds:
-2.456518 s
+3.414449 s
 -----------NumbaPro GPU based add------------
 Time to create arrays:
-0.837742 s
+0.856417 s
 Time for 100 adds:
-0.163046 s
+0.114286 s
+Time to transer results to host:
+0.028349 s
+29.8763679983 times speedup
 ```
