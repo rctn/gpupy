@@ -25,9 +25,10 @@ params = """Parameters for dot:
          nIter: """+str(nIter)+"""\n"""
 print params
              
+rng = np.random.RandomState(0)
 start = timer()
-matrix1 = np.array(np.random.rand(*dimMatrix),dtype=d_type, order='F')
-matrix2 = np.array(np.random.rand(*dimMatrix),dtype=d_type, order='F')
+matrix1 = np.array(rng.rand(*dimMatrix),dtype=d_type, order='F')
+matrix2 = np.array(rng.rand(*dimMatrix),dtype=d_type, order='F')
 matrix3_np = np.zeros(shape=dimMatrix,dtype=d_type, order='F')
 dt = timer()-start
 print '---------------Numpy based dot---------------'
@@ -37,14 +38,20 @@ start = timer()
 for ii in xrange(nIter):
     matrix3_np[:] = np.dot(matrix1, matrix2)
 dt = timer()-start
-print 'Time for '+str(nIter)+' dots:'
-print '%f s' % dt
+mult = dt
+print 'Time for matrix dot:'
+print '%f s' % (dt/float(nIter))
+print 'Teraflops:'
+print 2.*dim**3/float(dt/float(nIter))/1.e12
 
 gp = Gpupy()
+stream = gp.stream
+rng = np.random.RandomState(0)
 start = timer()
-matrix1 = cuda.to_device(matrix1)
-matrix2 = cuda.to_device(matrix2)
-matrix3_gp = cuda.to_device(np.zeros(shape=dimMatrix,dtype=d_type,order='F'))
+matrix1 = cuda.to_device(np.array(rng.rand(*dimMatrix),dtype=d_type, order='F'), stream=stream)
+matrix2 = cuda.to_device(np.array(rng.rand(*dimMatrix),dtype=d_type, order='F'), stream=stream)
+matrix3_gp = cuda.to_device(np.zeros(shape=dimMatrix,dtype=d_type,order='F'), stream=stream)
+stream.synchronize()
 dt = timer()-start
 print '-----------NumbaPro GPU based dot------------'
 print 'Time to create arrays:'
@@ -52,10 +59,20 @@ print '%f s' % dt
 start = timer()
 for ii in xrange(nIter):
     gp.dot(matrix1, matrix2, out=matrix3_gp)
+gp.sync()
 dt = timer()-start
-assert np.allclose(matrix3_gp.copy_to_host(), matrix3_np), "dot products not returning same answer"
-print 'Time for '+str(nIter)+' dots:'
+mult = mult/dt
+print 'Time for matrix dot:'
+print '%f s' % (dt/float(nIter))
+print 'Teraflops:'
+print 2.*dim**3/float(dt/float(nIter))/1.e12
+start = timer()
+matrix3_gp = matrix3_gp.copy_to_host()
+dt = timer()-start
+print 'Time to transer results to host:'
 print '%f s' % dt
+assert np.allclose(matrix3_gp, matrix3_np), "dot products not returning same answer"
+print str(mult)+' times speedup'
     
 
 nIter = 100
@@ -67,9 +84,10 @@ print '---------------------------------------------'
 print ''
 print params
              
+rng = np.random.RandomState(0)
 start = timer()
-matrix1 = np.array(np.random.rand(*dimMatrix), dtype=d_type, order='F')
-matrix2 = np.array(np.random.rand(*dimMatrix), dtype=d_type, order='F')
+matrix1 = np.array(rng.rand(*dimMatrix), dtype=d_type, order='F')
+matrix2 = np.array(rng.rand(*dimMatrix), dtype=d_type, order='F')
 matrix3_np = np.zeros(shape=dimMatrix, dtype=d_type, order='F')
 dt = timer()-start
 print '---------------Numpy based add---------------'
@@ -79,14 +97,20 @@ start = timer()
 for ii in xrange(nIter):
     matrix3_np[:] = np.add(matrix1, matrix2)
 dt = timer()-start
-print 'Time for '+str(nIter)+' adds:'
-print '%f s' % dt
+mult = dt
+print 'Time for matrix add:'
+print '%f s' % (dt/float(nIter))
+print 'Teraflops:'
+print dim**2/float(dt/float(nIter))/1.e12
 
 gp = Gpupy()
+stream = gp.stream
+rng = np.random.RandomState(0)
 start = timer()
-matrix1 = cuda.to_device(matrix1)
-matrix2 = cuda.to_device(matrix2)
-matrix3_gp = cuda.to_device(np.zeros(shape=dimMatrix, dtype=d_type,order='F'))
+matrix1 = cuda.to_device(np.array(rng.rand(*dimMatrix), dtype=d_type, order='F'), stream=stream)
+matrix2 = cuda.to_device(np.array(rng.rand(*dimMatrix), dtype=d_type, order='F'), stream=stream)
+matrix3_gp = cuda.to_device(np.zeros(shape=dimMatrix, dtype=d_type,order='F'), stream=stream)
+stream.synchronize()
 dt = timer()-start
 print '-----------NumbaPro GPU based add------------'
 print 'Time to create arrays:'
@@ -94,7 +118,17 @@ print '%f s' % dt
 start = timer()
 for ii in xrange(nIter):
     gp.add(matrix1, matrix2, out=matrix3_gp)
+gp.sync()
 dt = timer()-start
-assert np.allclose(matrix3_gp.copy_to_host(), matrix3_np), "add not returning same results"
-print 'Time for '+str(nIter)+' adds:'
+mult = mult/dt
+print 'Time for matrix add:'
+print '%f s' % (dt/float(nIter))
+print 'Teraflops:'
+print dim**2/float(dt/float(nIter))/1.e12
+start = timer()
+matrix3_gp = matrix3_gp.copy_to_host()
+dt = timer()-start
+print 'Time to transer results to host:'
 print '%f s' % dt
+assert np.allclose(matrix3_gp, matrix3_np), "add not returning same results"
+print str(mult)+' times speedup'

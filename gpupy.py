@@ -8,7 +8,7 @@ from __future__ import division
 __authors__   = "Jesse Livezey, Zayd Enam"
 __copyright__ = "(c) 2014, Jesse Livezey, Zayd Enam"
 __license__   = "The MIT License (MIT)"
-__contact__   = "Jesse Livezey <jesse.livezey+gpupy@berkeley.edu>"
+__contact__   = "Jesse Livezey <jesse.livezey@berkeley.edu>"
 import numbapro.cudalib.cublas
 from numbapro import cuda
 import numpy as np
@@ -33,12 +33,12 @@ class Gpupy(object):
                 cuda.select_device(gpuID)
             else:
                 raise ValueError('GPU ID not found')
-        self.blas = numbapro.cudalib.cublas.Blas()
         if stream is None:
             self.stream = cuda.stream()
         else:
             assert isinstance(stream, numba.cuda.cudadrv.driver.Stream)
             self.stream = stream
+        self.blas = numbapro.cudalib.cublas.Blas(stream=self.stream)
         self.blockdim = 32
         self.blockdim2 = (32, 32)
 
@@ -239,9 +239,9 @@ class Gpupy(object):
                 blockdim = (32,32)
                 griddim = (int(ceil(a_dim[0]/blockdim[0])),int(ceil(a_dim[1]/blockdim[1])))
                 if alpha != 1. or beta != 1.:
-                    m_mn_sadd_pointwise[griddim,blockdim](a,b,alpha,beta,out)
+                    m_mn_sadd_pointwise[griddim,blockdim, self.stream](a,b,alpha,beta,out)
                 else:
-                    m_mn_add_pointwise[griddim,blockdim](a,b,out)
+                    m_mn_add_pointwise[griddim,blockdim, self.stream](a,b,out)
             elif a_dim[1] == b_dim[1] and b_dim[0] == 1:
                 if out is None:
                     out = cuda.device_array((a_dim[0], a_dim[1]), dtype=out_dtype, order='F')
@@ -252,9 +252,9 @@ class Gpupy(object):
                 blockdim = (32,32)
                 griddim = (int(ceil(a_dim[0]/blockdim[0])),int(ceil(a_dim[1]/blockdim[1])))
                 if alpha != 1. or beta != 1.:
-                    m_nm_sadd_pointwise[griddim,blockdim](a,b,alpha,beta,out)
+                    m_nm_sadd_pointwise[griddim,blockdim, self.stream](a,b,alpha,beta,out)
                 else:
-                    m_nm_add_pointwise[griddim,blockdim](a,b,out)
+                    m_nm_add_pointwise[griddim,blockdim, self.stream](a,b,out)
             elif b_dim[0] == a_dim[0] and a_dim[1] == 1:
                 if out is None:
                     out = cuda.device_array((b_dim[0], b_dim[1]), dtype=out_dtype, order='F')
@@ -265,9 +265,9 @@ class Gpupy(object):
                 blockdim = (32,32)
                 griddim = (int(ceil(b_dim[0]/blockdim[0])),int(ceil(b_dim[1]/blockdim[1])))
                 if alpha != 1. or beta != 1.:
-                    m_mn_sadd_pointwise[griddim,blockdim](b,a,beta,alpha,out)
+                    m_mn_sadd_pointwise[griddim,blockdim, self.stream](b,a,beta,alpha,out)
                 else:
-                    m_mn_add_pointwise[griddim,blockdim](b,a,out)
+                    m_mn_add_pointwise[griddim,blockdim, self.stream](b,a,out)
             elif b_dim[1] == a_dim[1] and a_dim[0] == 1:
                 if out is None:
                     out = cuda.device_array((b_dim[0], b_dim[1]), dtype=out_dtype, order='F')
@@ -278,9 +278,9 @@ class Gpupy(object):
                 blockdim = (32,32)
                 griddim = (int(ceil(b_dim[0]/blockdim[0])),int(ceil(b_dim[1]/blockdim[1])))
                 if alpha != 1. or beta != 1.:
-                    m_nm_sadd_pointwise[griddim,blockdim](b,a,beta,alpha,out)
+                    m_nm_sadd_pointwise[griddim,blockdim, self.stream](b,a,beta,alpha,out)
                 else:
-                    m_nm_add_pointwise[griddim,blockdim](b,a,out)
+                    m_nm_add_pointwise[griddim,blockdim, self.stream](b,a,out)
             else:
                 raise ValueError('matrices are not aligned')
         # Vector-vector addition
@@ -296,9 +296,9 @@ class Gpupy(object):
             blockdim = 32
             griddim = int(ceil(a_dim[0]/blockdim))
             if alpha != 1. or beta != 1.:
-                vsadd_pointwise[griddim,blockdim](a,b,alpha,beta,out)
+                vsadd_pointwise[griddim,blockdim, self.stream](a,b,alpha,beta,out)
             else:
-                vadd_pointwise[griddim,blockdim](a,b,out)
+                vadd_pointwise[griddim,blockdim, self.stream](a,b,out)
         # Matrix-scalar addition
         elif a.ndim == 2 and b.ndim == 0:
             if out is None:
@@ -310,9 +310,9 @@ class Gpupy(object):
             blockdim = (32,32)
             griddim = (int(ceil(a_dim[0]/blockdim[0])),int(ceil(a_dim[1]/blockdim[0])))
             if alpha != 1. or beta != 1.:
-                ms_sadd_pointwise[griddim,blockdim](a,b,alpha,beta,out)
+                ms_sadd_pointwise[griddim,blockdim, self.stream](a,b,alpha,beta,out)
             else:
-                ms_add_pointwise[griddim,blockdim](a,b,out)
+                ms_add_pointwise[griddim,blockdim, self.stream](a,b,out)
         # Scalar-matrix addition
         elif a.ndim == 0 and b.ndim == 2:
             if out is None:
@@ -324,9 +324,9 @@ class Gpupy(object):
             blockdim = (32,32)
             griddim = (int(ceil(b_dim[0]/blockdim[0])),int(ceil(b_dim[1]/blockdim[0])))
             if alpha != 1. or beta != 1.:
-                ms_sadd_pointwise[griddim,blockdim](b,a,beta,alpha,out)
+                ms_sadd_pointwise[griddim,blockdim, self.stream](b,a,beta,alpha,out)
             else:
-                ms_add_pointwise[griddim,blockdim](b,a,out)
+                ms_add_pointwise[griddim,blockdim, self.stream](b,a,out)
         # Vector-scalar addition
         elif a.ndim == 1 and b.ndim == 0:
             if out is None:
@@ -338,9 +338,9 @@ class Gpupy(object):
             blockdim = 32
             griddim = int(ceil(a_dim[0]/blockdim))
             if alpha != 1. or beta != 1.:
-                vs_sadd_pointwise[griddim,blockdim](a,b,alpha,beta,out)
+                vs_sadd_pointwise[griddim,blockdim, self.stream](a,b,alpha,beta,out)
             else:
-                vs_add_pointwise[griddim,blockdim](a,b,out)
+                vs_add_pointwise[griddim,blockdim, self.stream](a,b,out)
         # Scalar-vector addition
         elif a.ndim == 0 and b.ndim == 1:
             if out is None:
@@ -352,9 +352,9 @@ class Gpupy(object):
             blockdim = 32
             griddim = int(ceil(b_dim[0]/blockdim))
             if alpha != 1. or beta != 1.:
-                vs_sadd_pointwise[griddim,blockdim](b,a,beta,alpha,out)
+                vs_sadd_pointwise[griddim,blockdim, self.stream](b,a,beta,alpha,out)
             else:
-                vs_add_pointwise[griddim,blockdim](b,a,out)
+                vs_add_pointwise[griddim,blockdim, self.stream](b,a,out)
         # Matrix-vector addition
         elif a.ndim == 2 and b.ndim == 1:
             if out is None:
@@ -367,14 +367,14 @@ class Gpupy(object):
             griddim = (int(ceil(a_dim[0]/blockdim[0])),int(ceil(a_dim[1]/blockdim[0])))
             if b.shape[0] == a.shape[0]:
                 if alpha != 1. or beta != 1.:
-                    mv0_sadd_pointwise[griddim,blockdim](a,b,alpha,beta,out)
+                    mv0_sadd_pointwise[griddim,blockdim, self.stream](a,b,alpha,beta,out)
                 else:
-                    mv0_add_pointwise[griddim,blockdim](a,b,out)
+                    mv0_add_pointwise[griddim,blockdim, self.stream](a,b,out)
             elif b.shape[0] == a.shape[1]:
                 if alpha != 1. or beta != 1.:
-                    mv1_sadd_pointwise[griddim,blockdim](a,b,alpha,beta,out)
+                    mv1_sadd_pointwise[griddim,blockdim, self.stream](a,b,alpha,beta,out)
                 else:
-                    mv1_add_pointwise[griddim,blockdim](a,b,out)
+                    mv1_add_pointwise[griddim,blockdim, self.stream](a,b,out)
             else:
                 raise ValueError('matricies are not aligned')
         # Vector-matrix addition
@@ -389,14 +389,14 @@ class Gpupy(object):
             griddim = (int(ceil(b_dim[0]/blockdim[0])),int(ceil(b_dim[1]/blockdim[0])))
             if a.shape[0] == b.shape[0]:
                 if alpha != 1. or beta != 1.:
-                    mv0_sadd_pointwise[griddim,blockdim](b,a,beta,alpha,out)
+                    mv0_sadd_pointwise[griddim,blockdim, self.stream](b,a,beta,alpha,out)
                 else:
-                    mv0_add_pointwise[griddim,blockdim](b,a,out)
+                    mv0_add_pointwise[griddim,blockdim, self.stream](b,a,out)
             elif a.shape[0] == b.shape[1]:
                 if alpha != 1. or beta != 1.:
-                    mv1_sadd_pointwise[griddim,blockdim](b,a,beta,alpha,out)
+                    mv1_sadd_pointwise[griddim,blockdim, self.stream](b,a,beta,alpha,out)
                 else:
-                    mv1_add_pointwise[griddim,blockdim](b,a,out)
+                    mv1_add_pointwise[griddim,blockdim, self.stream](b,a,out)
             else:
                 raise ValueError('matricies are not aligned')
         else:
@@ -456,7 +456,7 @@ class Gpupy(object):
 
             blockdim2 = (32,32)
             griddim2 = (int(ceil(a_dim[0]/blockdim2[0])),int(ceil(a_dim[1]/blockdim2[1])))
-            mmultiply_pointwise[griddim2,blockdim2](a,b,out)
+            mmultiply_pointwise[griddim2,blockdim2, self.stream](a,b,out)
 
         elif a.ndim == 1 and b.ndim == 1:
             if a_dim[0] != b_dim[0]:
@@ -469,7 +469,7 @@ class Gpupy(object):
                 raise ValueError('matrices are not aligned')
             blockdim = 32
             griddim = int(ceil(a_dim[0]/blockdim))
-            vmultiply_pointwise[griddim,blockdim](a,b,out)
+            vmultiply_pointwise[griddim,blockdim, self.stream](a,b,out)
         else:
             raise NotImplementedError
 
@@ -537,7 +537,7 @@ class Gpupy(object):
                 else:
                     raise ValueError('matrices are not aligned')
                 griddim = int(ceil(a_dim[1]/self.blockdim))
-                sum_0[griddim, self.blockdim](a, out)
+                sum_0[griddim, self.blockdim, self.stream](a, out)
             elif axis == 1:
                 if out is None:
                     out = cuda.device_array(a_dim[0], dtype=out_dtype, order='F')
@@ -546,7 +546,7 @@ class Gpupy(object):
                 else:
                     raise ValueError('matrices are not aligned')
                 griddim = int(ceil(a_dim[0]/self.blockdim))
-                sum_1[griddim, self.blockdim](a, out)
+                sum_1[griddim, self.blockdim, self.stream](a, out)
         elif a.ndim == 1:
             out = self.blas.asum(a)
             pass
@@ -583,7 +583,7 @@ class Gpupy(object):
                 else:
                     raise ValueError('matrices are not aligned')
                 griddim = int(ceil(a_dim[1]/self.blockdim))
-                mean_0[griddim, self.blockdim](a, float(a_dim[0]), out)
+                mean_0[griddim, self.blockdim, self.stream](a, float(a_dim[0]), out)
             elif axis == 1:
                 if out is None:
                     out = cuda.device_array(a_dim[0], dtype=out_dtype, order='F')
@@ -592,7 +592,7 @@ class Gpupy(object):
                 else:
                     raise ValueError('matrices are not aligned')
                 griddim = int(ceil(a_dim[0]/self.blockdim))
-                mean_1[griddim, self.blockdim](a, float(a_dim[1]), out)
+                mean_1[griddim, self.blockdim, self.stream](a, float(a_dim[1]), out)
         elif a.ndim == 1:
             out = self.blas.asum(a)/float(np.prod(a_dim))
             pass
@@ -623,7 +623,7 @@ class Gpupy(object):
             else:
                 raise ValueError('matrices are not aligned')
             griddim = int(ceil(a_dim[0]/self.blockdim))
-            diag2v[griddim, self.blockdim](a, out)
+            diag2v[griddim, self.blockdim, self.stream](a, out)
 
         elif a.ndim == 1:
             if out is None:
@@ -633,7 +633,7 @@ class Gpupy(object):
             else:
                 raise ValueError('matrices are not aligned')
             griddim2 = (int(ceil(a_dim[0]/self.blockdim2[0])), int(ceil(a_dim[0]/self.blockdim2[1])))
-            diag2m[griddim2, self.blockdim2](a, out)
+            diag2m[griddim2, self.blockdim2, self.stream](a, out)
         else:
             raise NotImplementedError
         
@@ -653,7 +653,7 @@ class Gpupy(object):
 
         if a.ndim == 2:
             griddim = int(ceil(a_dim[0]/self.blockdim))
-            zero_diag_m[griddim, self.blockdim](a)
+            zero_diag_m[griddim, self.blockdim, self.stream](a)
         else:
             raise NotImplementedError
 
@@ -695,27 +695,27 @@ class Gpupy(object):
             if thresh.ndim == 2:
                 if a_dim == thresh_dim:
                     griddim2 = (int(ceil(a_dim[0]/self.blockdim2[0])),int(ceil(a_dim[1]/self.blockdim2[1])))
-                    thresh_m_t[griddim2, self.blockdim2](a, thresh, flip_x, set_val, out)
+                    thresh_m_t[griddim2, self.blockdim2, self.stream](a, thresh, flip_x, set_val, out)
                 elif a_dim[0] == thresh_dim[0] and thresh_dim[1] == 1:
                     griddim2 = (int(ceil(a_dim[0]/self.blockdim2[0])),int(ceil(a_dim[1]/self.blockdim2[1])))
-                    thresh_m_tn[griddim2, self.blockdim2](a, thresh, flip_x, set_val, out)
+                    thresh_m_tn[griddim2, self.blockdim2, self.stream](a, thresh, flip_x, set_val, out)
                 elif a_dim[1] == thresh_dim[1] and thresh_dim[0] == 1:
                     griddim2 = (int(ceil(a_dim[0]/self.blockdim2[0])),int(ceil(a_dim[1]/self.blockdim2[1])))
-                    thresh_m_nt[griddim2, self.blockdim2](a, thresh, flip_x, set_val, out)
+                    thresh_m_nt[griddim2, self.blockdim2, self.stream](a, thresh, flip_x, set_val, out)
                 else:
                     raise ValueError('matrices are not aligned')
             elif thresh.ndim == 1:
                 if thresh_dim[0] == a_dim[0]:
                     griddim2 = (int(ceil(a_dim[0]/self.blockdim2[0])),int(ceil(a_dim[1]/self.blockdim2[1])))
-                    thresh_am_t[griddim2, self.blockdim2](a, thresh, flip_x, set_val, out)
+                    thresh_am_t[griddim2, self.blockdim2, self.stream](a, thresh, flip_x, set_val, out)
                 elif thresh_dim[0] == a_dim[1]:
                     griddim2 = (int(ceil(a_dim[0]/self.blockdim2[0])),int(ceil(a_dim[1]/self.blockdim2[1])))
-                    thresh_ma_t[griddim2, self.blockdim2](a, thresh, flip_x, set_val, out)
+                    thresh_ma_t[griddim2, self.blockdim2, self.stream](a, thresh, flip_x, set_val, out)
                 else:
                     raise ValueError('matrices not aligned')
             elif thresh.shape == ():
                 griddim2 = (int(ceil(a_dim[0]/self.blockdim2[0])),int(ceil(a_dim[1]/self.blockdim2[1])))
-                thresh_m[griddim2, self.blockdim2](a, thresh, flip_x, set_val, out)
+                thresh_m[griddim2, self.blockdim2, self.stream](a, thresh, flip_x, set_val, out)
             else:
                 raise ValueError('matrices are not aligned')
         elif a.ndim == 1:
@@ -753,13 +753,58 @@ class Gpupy(object):
 
         if out.ndim == 2:
             griddim2 = (int(ceil(out_dim[0]/self.blockdim2[0])),int(ceil(out_dim[1]/self.blockdim2[1])))
-            const_m[griddim2, self.blockdim2](out, value)
+            const_m[griddim2, self.blockdim2, self.stream](out, value)
         elif out.ndim == 1:
             griddim = int(ceil(out_dim[0]/self.blockdim))
-            const_v[griddim, self.blockdim](out, value)
+            const_v[griddim, self.blockdim, self.stream](out, value)
         else:
             raise NotImplementedError
 
+        return out
+
+    def conv_2d(self, inputs, kernels, out = None):
+        """Correlation of filters and kernels.
+
+        Parameters
+        ----------
+        inputs : array-like
+            Image-like batch. b01c order.
+        kernels : array-like
+            Kernels for correlation. c01k order.
+        out : DeviceNDArray (optional)
+            Result will overwrite out if given.
+        """
+
+        inputs, out_dtype = _check_array(inputs)
+        kernels, out_dtype = _check_array(kernels)
+
+        if isinstance(out, cuda.cudadrv.devicearray.DeviceNDArray):
+            pass
+        elif out is None:
+            pass
+        else:
+            raise NotImplementedError
+
+        b, n, m, ci = inputs.shape
+        ck, r, s, k = kernels.shape
+        assert ci == ck
+        assert r <= n
+        assert s <= m
+        c = ci
+        out_shape = (b, n-r+1, m-s+1, k)
+
+        if out is None:
+            out = cuda.device_array(out_shape, dtype=out_dtype, order='F')
+        elif out.shape == out_shape:
+            pass
+        else:
+            raise ValueError('matrices are not aligned')
+
+        griddim2 = (int(ceil(b*(n-r+1)/self.blockdim2[0])),int(ceil(k*(m-s+1)/self.blockdim2[1])))
+        print inputs.shape
+        print kernels.shape
+        print out.shape
+        conv_2d_kernel[griddim2, self.blockdim2, self.stream](inputs, kernels, out)
         return out
 
 @cuda.jit('void(f4[:,:],f4[:])')
@@ -1084,6 +1129,24 @@ def m_mn_sadd_pointwise(a,b,alpha,beta,out):
 
     if i < n and j < m:
         out[i,j] = alpha*a[i,j]+beta*b[i,0]
+
+@cuda.jit('void(f4[:,:,:,:],f4[:,:,:,:],f4[:,:,:,:])')
+def conv_2d_kernel(inputs, kernels, outputs):
+    b, n, m, c = inputs.shape
+    c2, r, s, k = kernels.shape
+    b, d1, d2, k = outputs.shape
+    x,y = cuda.grid(2)
+    batch = int(x/b)
+    loc0 = x % b
+    loc1 = int(y/(m-s+1))
+    n_ker = y % (m-s+1)
+
+    if batch<b and n_ker<k and loc0<n-r+1 and loc1<m-s+1:
+        outputs[b,n,m,k] = 0.
+        for ii in xrange(r):
+            for jj in xrange(s):
+                for kk in xrange(c):
+                    outputs[b,n,m,k] += inputs[b,m+ii,n+jj,c]*kernels[c, ii, jj, n_ker]
 
 def _cu_reshape(d_a, a_shape, a_strides, a_dtype):
     """Reshapes d_a to have same dimensions as a
