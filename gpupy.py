@@ -768,11 +768,11 @@ class Gpupy(object):
         Parameters
         ----------
         inputs : array-like
-            Image-like batch. b01c order.
+            Image-like batch. bc01 order.
         kernels : array-like
-            Kernels for correlation. c01k order.
+            Kernels for correlation. kc01 order.
         out : DeviceNDArray (optional)
-            Result will overwrite out if given.
+            Result will overwrite out if given. bk01 order.
         """
 
         inputs, out_dtype = _check_array(inputs)
@@ -785,13 +785,15 @@ class Gpupy(object):
         else:
             raise NotImplementedError
 
-        b, n, m, ci = inputs.shape
-        ck, r, s, k = kernels.shape
+        b, ci, n, m = inputs.shape
+        k, ck, r, s = kernels.shape
+        print ci
+        print ck
         assert ci == ck
         assert r <= n
         assert s <= m
         c = ci
-        out_shape = (b, n-r+1, m-s+1, k)
+        out_shape = (b*k, n-r+1, m-s+1)
 
         if out is None:
             out = cuda.device_array(out_shape, dtype=out_dtype, order='F')
@@ -799,13 +801,32 @@ class Gpupy(object):
             pass
         else:
             raise ValueError('matrices are not aligned')
+        inputs = self.reshape(inputs, newshape=(b*c, n, m))
+        kernels = self.reshape(kernels, newshape=(k*c, r, s))
 
         griddim2 = (int(ceil(b*(n-r+1)/self.blockdim2[0])),int(ceil(k*(m-s+1)/self.blockdim2[1])))
+        print self.blockdim2
+        print griddim2
         print inputs.shape
         print kernels.shape
         print out.shape
-        conv_2d_kernel[griddim2, self.blockdim2, self.stream](inputs, kernels, out)
+        conv_2d_kernel[griddim2, self.blockdim2, self.stream](inputs, kernels, out, b, k)
         return out
+
+    def reshape(self, a, newshape, order='F'):
+        """ Reshapes a to have shape.
+
+        Parameters
+        ----------
+        a : array-like
+            Array to reshape.
+        shape : tuple of ints
+            Target shape
+        """
+        a, d_type = _check_array(a)
+        assert np.prod(a.shape) == np.prod(newshape)
+        return a.reshape(newshape, order=order)
+
 
 @cuda.jit('void(f4[:,:],f4[:])')
 def sum_0(a, out):
@@ -1130,11 +1151,12 @@ def m_mn_sadd_pointwise(a,b,alpha,beta,out):
     if i < n and j < m:
         out[i,j] = alpha*a[i,j]+beta*b[i,0]
 
-@cuda.jit('void(f4[:,:,:,:],f4[:,:,:,:],f4[:,:,:,:])')
-def conv_2d_kernel(inputs, kernels, outputs):
-    b, n, m, c = inputs.shape
-    c2, r, s, k = kernels.shape
-    b, d1, d2, k = outputs.shape
+@cuda.jit('void(f4[:,:,:], f4[:,:,:], f4[:,:,:], i4, i4)')
+def conv_2d_kernel(inputs, kernels, outputs, b, k):
+    bc, n, m = inputs.shape
+    kc, r, s = kernels.shape
+    bk, d1, d2 = outputs.shape
+    c = int(bc/b)
     x,y = cuda.grid(2)
     batch = int(x/b)
     loc0 = x % b
@@ -1142,11 +1164,12 @@ def conv_2d_kernel(inputs, kernels, outputs):
     n_ker = y % (m-s+1)
 
     if batch<b and n_ker<k and loc0<n-r+1 and loc1<m-s+1:
-        outputs[b,n,m,k] = 0.
+        outputs[batch*n_ker,loc0,loc1] = 0.
         for ii in xrange(r):
             for jj in xrange(s):
                 for kk in xrange(c):
-                    outputs[b,n,m,k] += inputs[b,m+ii,n+jj,c]*kernels[c, ii, jj, n_ker]
+                    outputs[batch*n_ker,loc0,loc1] += inputs[batch+b*kk,m+ii,n+jj]*kernels[n_ker+k*kk, ii, jj]
+
 
 def _cu_reshape(d_a, a_shape, a_strides, a_dtype):
     """Reshapes d_a to have same dimensions as a
