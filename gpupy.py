@@ -12,7 +12,7 @@ __contact__   = "Jesse Livezey <jesse.livezey@berkeley.edu>"
 import numbapro.cudalib.cublas
 from numbapro import cuda
 import numpy as np
-from math import ceil, exp, fabs, tanh
+from math import ceil, exp, fabs, log, tanh
 
 class Gpupy(object):
     """Class that has cuBLAS wrappers and additional GPU functionality.
@@ -728,6 +728,42 @@ class Gpupy(object):
 
         return out
 
+    def log(self, a, out=None):
+        """Exponentiate input.
+
+        Parameters
+        ----------
+        a : array-like
+            Array to rectify.
+        """
+
+        a, out_dtype = _check_array(a)
+        a_dim = a.shape
+
+        if type(out) == cuda.cudadrv.devicearray.DeviceNDArray:
+            pass
+        elif out is None:
+            pass
+        else:
+            raise NotImplementedError
+        if out is None:
+            out = cuda.device_array(shape=a_dim, dtype=out_dtype, order='F')
+        elif out.shape == a_dim:
+            pass
+        else:
+            raise ValueError('matrices are not aligned')
+
+        if a.ndim == 2:
+            griddim2 = (int(ceil(a_dim[0]/self.blockdim2[0])),int(ceil(a_dim[1]/self.blockdim2[1])))
+            log_m[griddim2, self.blockdim2, self.stream](a, out)
+        elif a.ndim == 1:
+            griddim = int(ceil(a_dim[0]/self.blockdim))
+            log_v[griddim, self.blockdim, self.stream](a, out)
+        else:
+            raise NotImplementedError
+
+        return out
+
     def abs(self, a, out=None):
         """ABS of input.
 
@@ -1068,6 +1104,22 @@ def exp_v(a, out):
 
     if i < n:
         out[i] = exp(a[i])
+
+@cuda.jit('void(f4[:,:],f4[:,:])')
+def log_m(a, out):
+    n = out.shape[0]
+    m = out.shape[1]
+    i,j = cuda.grid(2)
+
+    if i < n and j < m:
+        out[i,j] = log(a[i,j])
+@cuda.jit('void(f4[:],f4[:])')
+def log_v(a, out):
+    n = out.shape[0]
+    i = cuda.grid(1)
+
+    if i < n:
+        out[i] = log(a[i])
 
 @cuda.jit('void(f4[:,:],f4[:,:])')
 def abs_m(a, out):
