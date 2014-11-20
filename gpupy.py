@@ -12,7 +12,7 @@ __contact__   = "Jesse Livezey <jesse.livezey@berkeley.edu>"
 import numbapro.cudalib.cublas
 from numbapro import cuda
 import numpy as np
-from math import ceil
+from math import ceil, exp, fabs, tanh
 
 class Gpupy(object):
     """Class that has cuBLAS wrappers and additional GPU functionality.
@@ -659,6 +659,147 @@ class Gpupy(object):
 
         return a
 
+    def set_diag(self, a, value):
+        """Set diagonal of matrix to value.
+
+        Parameters
+        ----------
+        a : array-like
+            Array to set diagonal to value.
+        value : array-like
+            Value or array of values for diagonal.
+        """
+        value, out_dtype = _check_array(value)
+        a, out_dtype = _check_array(a)
+
+        a_dim = a.shape
+        if a_dim[0] != a_dim[1]:
+            raise NotImplementedError
+        if value.ndim !=1:
+            raise NotImplementedError
+
+        if a.ndim == 2:
+            if value.shape[0] == 1:
+                griddim = int(ceil(a_dim[0]/self.blockdim))
+                set_diag_s[griddim, self.blockdim, self.stream](a, value)
+            elif value.shape[0] == a_dim[0]:
+                griddim = int(ceil(a_dim[0]/self.blockdim))
+                set_diag_v[griddim, self.blockdim, self.stream](a, value)
+            else:
+                raise NotImplementedError
+        else:
+            raise NotImplementedError
+
+        return a
+
+    def exp(self, a, out=None):
+        """Exponentiate input.
+
+        Parameters
+        ----------
+        a : array-like
+            Array to rectify.
+        """
+
+        a, out_dtype = _check_array(a)
+        a_dim = a.shape
+
+        if type(out) == cuda.cudadrv.devicearray.DeviceNDArray:
+            pass
+        elif out is None:
+            pass
+        else:
+            raise NotImplementedError
+        if out is None:
+            out = cuda.device_array(shape=a_dim, dtype=out_dtype, order='F')
+        elif out.shape == a_dim:
+            pass
+        else:
+            raise ValueError('matrices are not aligned')
+
+        if a.ndim == 2:
+            griddim2 = (int(ceil(a_dim[0]/self.blockdim2[0])),int(ceil(a_dim[1]/self.blockdim2[1])))
+            exp_m[griddim2, self.blockdim2, self.stream](a, out)
+        elif a.ndim == 1:
+            griddim = int(ceil(a_dim[0]/self.blockdim))
+            exp_v[griddim, self.blockdim, self.stream](a, out)
+        else:
+            raise NotImplementedError
+
+        return out
+
+    def abs(self, a, out=None):
+        """ABS of input.
+
+        Parameters
+        ----------
+        a : array-like
+            Array to rectify.
+        """
+
+        a, out_dtype = _check_array(a)
+        a_dim = a.shape
+
+        if type(out) == cuda.cudadrv.devicearray.DeviceNDArray:
+            pass
+        elif out is None:
+            pass
+        else:
+            raise NotImplementedError
+        if out is None:
+            out = cuda.device_array(shape=a_dim, dtype=out_dtype, order='F')
+        elif out.shape == a_dim:
+            pass
+        else:
+            raise ValueError('matrices are not aligned')
+
+        if a.ndim == 2:
+            griddim2 = (int(ceil(a_dim[0]/self.blockdim2[0])),int(ceil(a_dim[1]/self.blockdim2[1])))
+            abs_m[griddim2, self.blockdim2, self.stream](a, out)
+        elif a.ndim == 1:
+            griddim = int(ceil(a_dim[0]/self.blockdim))
+            abs_v[griddim, self.blockdim, self.stream](a, out)
+        else:
+            raise NotImplementedError
+
+        return out
+
+    def tanh(self, a, out=None):
+        """Tanh of input.
+
+        Parameters
+        ----------
+        a : array-like
+            Array to rectify.
+        """
+
+        a, out_dtype = _check_array(a)
+        a_dim = a.shape
+
+        if type(out) == cuda.cudadrv.devicearray.DeviceNDArray:
+            pass
+        elif out is None:
+            pass
+        else:
+            raise NotImplementedError
+        if out is None:
+            out = cuda.device_array(shape=a_dim, dtype=out_dtype, order='F')
+        elif out.shape == a_dim:
+            pass
+        else:
+            raise ValueError('matrices are not aligned')
+
+        if a.ndim == 2:
+            griddim2 = (int(ceil(a_dim[0]/self.blockdim2[0])),int(ceil(a_dim[1]/self.blockdim2[1])))
+            tanh_m[griddim2, self.blockdim2, self.stream](a, out)
+        elif a.ndim == 1:
+            griddim = int(ceil(a_dim[0]/self.blockdim))
+            tanh_v[griddim, self.blockdim, self.stream](a, out)
+        else:
+            raise NotImplementedError
+
+        return out
+
     def relu(self, a, thresh=0., set_val=0., flip_x=0, out=None):
         """Rectify input.
 
@@ -730,6 +871,46 @@ class Gpupy(object):
             raise NotImplementedError
 
         return a
+
+    def clip(self, a, low, high, out=None):
+        """Clip input.
+
+        Parameters
+        ----------
+        a : array-like
+            Array to rectify.
+        low : float
+            Lowest value for array.
+        high : float
+            Highest value for array.
+        """
+
+        a, out_dtype = _check_array(a)
+        a_dim = a.shape
+
+        if type(out) == cuda.cudadrv.devicearray.DeviceNDArray:
+            pass
+        elif out is None:
+            pass
+        else:
+            raise NotImplementedError
+        if out is None:
+            out = cuda.device_array(shape=a_dim, dtype=out_dtype, order='F')
+        elif out.shape == a_dim:
+            pass
+        else:
+            raise ValueError('matrices are not aligned')
+
+        if a.ndim == 2:
+            griddim2 = (int(ceil(a_dim[0]/self.blockdim2[0])),int(ceil(a_dim[1]/self.blockdim2[1])))
+            clip_m[griddim2, self.blockdim2, self.stream](a, low, high, out)
+        elif a.ndim == 1:
+            griddim = int(ceil(a_dim[0]/self.blockdim))
+            clip_v[griddim, self.blockdim, self.stream](a, low, high, out)
+        else:
+            raise NotImplementedError
+
+        return out
 
     def ones(self, shape, out=None):
         return self.const(shape, 1., out)
@@ -872,6 +1053,80 @@ def mean_1(a, div, out):
             out[i] += a[i,jj]
         out[i] = out[i]/div
 
+@cuda.jit('void(f4[:,:],f4[:,:])')
+def exp_m(a, out):
+    n = out.shape[0]
+    m = out.shape[1]
+    i,j = cuda.grid(2)
+
+    if i < n and j < m:
+        out[i,j] = exp(a[i,j])
+@cuda.jit('void(f4[:],f4[:])')
+def exp_v(a, out):
+    n = out.shape[0]
+    i = cuda.grid(1)
+
+    if i < n:
+        out[i] = exp(a[i])
+
+@cuda.jit('void(f4[:,:],f4[:,:])')
+def abs_m(a, out):
+    n = out.shape[0]
+    m = out.shape[1]
+    i,j = cuda.grid(2)
+
+    if i < n and j < m:
+        out[i,j] = fabs(a[i,j])
+@cuda.jit('void(f4[:],f4[:])')
+def abs_v(a, out):
+    n = out.shape[0]
+    i = cuda.grid(1)
+
+    if i < n:
+        out[i] = fabs(a[i])
+
+@cuda.jit('void(f4[:,:],f4[:,:])')
+def tanh_m(a, out):
+    n = out.shape[0]
+    m = out.shape[1]
+    i,j = cuda.grid(2)
+
+    if i < n and j < m:
+        out[i,j] = tanh(a[i,j])
+@cuda.jit('void(f4[:],f4[:])')
+def tanh_v(a, out):
+    n = out.shape[0]
+    i = cuda.grid(1)
+
+    if i < n:
+        out[i] = tanh(a[i])
+
+@cuda.jit('void(f4[:,:],f4,f4,f4[:,:])')
+def clip_m(a, low, high, out):
+    n = out.shape[0]
+    m = out.shape[1]
+    i,j = cuda.grid(2)
+
+    if i < n and j < m:
+        if a[i,j] < low:
+            out[i,j] = low
+        elif a[i,j] > high:
+            out[i,j] = high
+        else:
+            out[i,j] = a[i,j]
+@cuda.jit('void(f4[:],f4,f4,f4[:])')
+def clip_v(a, low, high, out):
+    n = out.shape[0]
+    i = cuda.grid(1)
+
+    if i < n:
+        if a[i] < low:
+            out[i] = low
+        elif a[i] > high:
+            out[i] = high
+        else:
+            out[i] = a[i]
+
 @cuda.jit('void(f4[:,:],f4,int8,f4,f4[:,:])')
 def thresh_m(a, thresh, flip_x, set_val, out):
     n = out.shape[0]
@@ -998,6 +1253,21 @@ def zero_diag_m(out):
 
     if i < n:
         out[i,i] = 0.
+
+@cuda.jit('void(f4[:,:],f4[:])')
+def set_diag_s(out, value):
+    n = out.shape[0]
+    i = cuda.grid(1)
+
+    if i < n:
+        out[i,i] = value[0]
+@cuda.jit('void(f4[:,:],f4[:])')
+def set_diag_v(out, value):
+    n = out.shape[0]
+    i = cuda.grid(1)
+
+    if i < n:
+        out[i,i] = value[i]
 
 @cuda.jit('void(f4[:],f4[:,:])')
 def diag2m(a, out):
