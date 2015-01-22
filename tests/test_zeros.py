@@ -1,4 +1,4 @@
-from gpupy.gpupy import Gpupy
+from gpupy import Gpupy
 import numpy as np
 from numbapro import cuda
 
